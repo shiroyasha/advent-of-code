@@ -29,7 +29,30 @@
 //
 // What is the solution to your captcha?
 //
-// Input file: input.txt
+// Input file: part1-input.txt
+//
+// --- Part Two ---
+//
+// You notice a progress bar that jumps to 50% completion. Apparently, the door
+// isn't yet satisfied, but it did emit a star as encouragement. The instructions
+// change:
+//
+// Now, instead of considering the next digit, it wants you to consider the digit
+// halfway around the circular list. That is, if your list contains 10 items, only
+// include a digit in your sum if the digit 10/2 = 5 steps forward matches it.
+// Fortunately, your list has an even number of elements.
+//
+// For example:
+//
+//     1212 produces 6: the list contains 4 items, and all four digits match the
+// digit 2 items ahead.  1221 produces 0, because every comparison is between a 1
+// and a 2.  123425 produces 4, because both 2s match each other, but no other
+// digit has a match.  123123 produces 12.  12131415 produces 4.
+//
+// What is the solution to your new captcha?
+//
+// Input file: part2-input.txt
+//
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -40,17 +63,30 @@ fn to_digits(captcha : String) -> Vec<u32> {
     captcha.chars().filter_map(|s| s.to_digit(10)).collect()
 }
 
-// takes [1, 2, 3, 4], returns [(1, 2), (2, 3), (3, 4), (4, 1)]
-fn each_pair_circular(digits : Vec<u32>) -> Vec<(u32, u32)> {
+// takes [1, 2, 3, 4],
+//   returns [(1, 2), (2, 3), (3, 4), (4, 1)] if step is 1
+//   returns [(1, 3), (2, 4), (3, 2), (4, 1)] if step is 2
+fn each_pair_circular(digits : Vec<u32>, step : usize) -> Vec<(u32, u32)> {
     (0..digits.len())
-        .map(|index|               (index, (index+1) % digits.len()))
+        .map(|index|               (index, (index+step) % digits.len()))
         .map(|(index, next_index)| (digits[index], digits[next_index]))
         .collect()
 }
 
 fn calculate(captcha : String) -> u32 {
     let digits = to_digits(captcha);
-    let pairs  = each_pair_circular(digits);
+    let pairs  = each_pair_circular(digits, 1);
+
+    pairs.iter()
+      .filter(|&&(a, b)| a == b) // return pairs that have the same element
+      .map(|&(a, _)| a)          // take the first element from array
+      .sum()
+}
+
+fn calculate2(captcha : String) -> u32 {
+    let digits = to_digits(captcha);
+    let step   = digits.len() / 2;
+    let pairs  = each_pair_circular(digits, step);
 
     pairs.iter()
       .filter(|&&(a, b)| a == b) // return pairs that have the same element
@@ -59,44 +95,71 @@ fn calculate(captcha : String) -> u32 {
 }
 
 fn main() {
-    let mut file = File::open("input.txt").expect("File not found");
+    let mut part1_file = File::open("part1_input.txt").expect("File not found");
+    let mut part1_input = String::new();
+    part1_file.read_to_string(&mut part1_input).expect("Failed to read input file");
 
-    let mut content = String::new();
-    file.read_to_string(&mut content).expect("Failed to read input file");
+    println!("Part 1 Solution: {}", calculate(part1_input));
 
-    println!("Content: {}", content);
+    let mut part2_file = File::open("part2_input.txt").expect("File not found");
+    let mut part2_input = String::new();
+    part2_file.read_to_string(&mut part2_input).expect("Failed to read input file");
 
-    let solution = calculate(content);
-
-    println!("Solution: {}", solution);
+    println!("Part 2 Solution: {}", calculate2(part2_input));
 }
 
 #[cfg(test)]
 mod test {
     use super::calculate;
+    use super::calculate2;
 
     #[test]
-    fn first_sample_input() {
+    fn part1_first_sample_input() {
         assert_eq!(calculate("1122".to_string()), 3);
     }
 
     #[test]
-    fn second_sample_input() {
+    fn part1_second_sample_input() {
         assert_eq!(calculate("1111".to_string()), 4);
     }
 
     #[test]
-    fn third_sample_input() {
+    fn part1_third_sample_input() {
         assert_eq!(calculate("1234".to_string()), 0);
     }
 
     #[test]
-    fn fourth_sample_input() {
+    fn part1_fourth_sample_input() {
         assert_eq!(calculate("91212129".to_string()), 9);
     }
 
     #[test]
-    fn fifth_sample_input() {
+    fn part1_fifth_sample_input() {
         assert_eq!(calculate("11223311".to_string()), 8);
+    }
+
+    #[test]
+    fn part2_first_sample() {
+        assert_eq!(calculate2("1212".to_string()), 6);
+    }
+
+    #[test]
+    fn part2_second_sample() {
+        assert_eq!(calculate2("1221".to_string()), 0);
+    }
+
+    #[test]
+    fn part2_third_sample() {
+        assert_eq!(calculate2("123425".to_string()), 4);
+    }
+
+    #[test]
+    fn part2_fourth_sample() {
+        assert_eq!(calculate2("123123".to_string()), 12);
+    }
+
+    #[test]
+    fn part2_fifth_sample() {
+        assert_eq!(calculate2("12131415".to_string()), 4);
     }
 }
