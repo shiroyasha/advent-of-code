@@ -31,8 +31,100 @@ fn access_cost(location: i32) -> i32 {
     x.abs() + y.abs()
 }
 
+fn adj_sum(table : &Vec<Vec<i32>>, x : usize, y : usize) -> i32 {
+    table[y+1][x-1] + table[y+1][x] + table[y+1][x+1] +
+    table[y  ][x-1] +             0 + table[y  ][x+1] +
+    table[y-1][x-1] + table[y-1][x] + table[y-1][x+1]
+}
+
+fn show_table(table : &Vec<Vec<i32>>) {
+    for row in table.iter().rev() {
+        println!("{:?}", row);
+    }
+
+    println!("------------------------");
+}
+
+//
+// horible code. kill me please
+//
+fn access_cost_part2(location: i32) -> i32 {
+    let mut table = Vec::with_capacity(20);
+
+    for _ in 0..20 {
+        table.push(vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    table[10][10] = 1;
+
+    let mut x = 10;
+    let mut y = 10;
+    let mut len = 2;
+
+    for r in (1..5) {
+        len = r * 2;
+        x += 1;
+
+        for i in 0..len {
+            let s = adj_sum(&table, x, y + i);
+
+            if s > location {
+                return s;
+            }
+
+            table[y+i][x] = s;
+        }
+
+        x -= 1;
+        y += len - 1;
+
+        for i in 0..len {
+            let s = adj_sum(&table, x-i, y);
+
+            if s > location {
+                return s;
+            }
+
+            table[y][x-i] = s;
+        }
+
+        x -= len - 1;
+        y -= 1;
+
+        for i in 0..len {
+            let s = adj_sum(&table, x, y-i);
+
+            if s > location {
+                return s;
+            }
+
+            table[y-i][x] = s;
+        }
+
+        y -= len - 1;
+        x += 1;
+
+        for i in 0..len {
+            let s = adj_sum(&table, x+i, y);
+
+            if s > location {
+                return s;
+            }
+
+            table[y][x+i] = s;
+        }
+
+        x += len - 1;
+    }
+
+    show_table(&table);
+
+    0
+}
+
 fn main() {
     println!("Result part 1: {}", access_cost(277678));
+    println!("Result part 2: {}", access_cost_part2(277678));
 }
 
 #[cfg(test)]
