@@ -20,7 +20,19 @@ fn reallocate(input : &mut Vec<i32>) {
     }
 }
 
-fn cycle_count(input : &mut Vec<i32>) -> i32 {
+fn cycle_size(states : &Vec<Vec<i32>>, current_state : &Vec<i32>) -> Option<usize> {
+    let mut res = states
+        .iter()
+        .enumerate()
+        .filter(|&(index, state)| state == current_state);
+
+    match res.nth(0) {
+        Some((index, _)) => Some(states.len() - index),
+        None => None
+    }
+}
+
+fn cycle_count(input : &mut Vec<i32>) -> (usize, i32) {
     let mut cycles = 0;
     let mut seen_states : Vec<Vec<i32>> = vec![];
 
@@ -32,24 +44,28 @@ fn cycle_count(input : &mut Vec<i32>) -> i32 {
 
         println!("{:?}", input);
 
-        if seen_states.iter().filter(|state| state == &input).count() > 0 {
-            break;
+        let cycle_size = cycle_size(&seen_states, &input);
+
+        match cycle_size {
+            Some(size) => return (size, cycles),
+            None => ()
         }
     }
-
-    cycles
 }
 
 #[test]
 fn cycle_count_test() {
     let mut input : Vec<i32> = vec![0, 2, 7, 0];
 
-    assert_eq!(cycle_count(&mut input), 5);
+    let (size, iterations ) = cycle_count(&mut input);
+
+    assert_eq!(iterations, 5);
+    assert_eq!(size, 4);
 }
 
 fn main() {
     let mut input : Vec<i32> = vec![14, 0, 15, 12, 11, 11, 3, 5, 1, 6, 8, 4, 9, 1, 8, 4];
 
     let cycles = cycle_count(&mut input);
-    println!("Cycles {}", cycles);
+    println!("Cycles {:?}", cycles);
 }
