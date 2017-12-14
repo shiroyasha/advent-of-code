@@ -1,13 +1,13 @@
 #[derive(Debug)]
-struct Program {
-    name : String,
-    weight: i32,
-    subprograms: Vec<String>,
+pub struct Program {
+    pub name : String,
+    pub weight: i32,
+    pub subprograms: Vec<String>,
 }
 
 impl Program {
 
-    fn parse_all(input : &str) -> Vec<Self> {
+    pub fn parse_all(input : &str) -> Vec<Self> {
         input.lines().map(|line| Program::parse(line)).collect()
     }
 
@@ -29,7 +29,7 @@ impl Program {
         names.split(',').map(|subprogram| subprogram.trim().to_string()).collect()
     }
 
-    fn new(name : String, weight : i32, subprograms : Vec<String>) -> Self {
+    pub fn new(name : String, weight : i32, subprograms : Vec<String>) -> Self {
         Program { name, weight, subprograms }
     }
 }
