@@ -3,12 +3,13 @@ use std::fs::File;
 use std::io::Read;
 
 struct Registers {
-    values: HashMap<String, i32>
+    values: HashMap<String, i32>,
+    max_value: i32
 }
 
 impl Registers {
     fn new() -> Self {
-        Registers { values: HashMap::new() }
+        Registers { values: HashMap::new(), max_value: 0 }
     }
 
     fn get(&self, name : &str) -> i32 {
@@ -21,11 +22,19 @@ impl Registers {
     fn inc(&mut self, name: &str, value: i32) {
         let new_value = self.get(&name) + value;
 
+        if new_value > self.max_value {
+            self.max_value = new_value;
+        }
+
         self.values.insert(name.to_string(), new_value);
     }
 
     fn dec(&mut self, name: &str, value: i32) {
         let new_value = self.get(&name) - value;
+
+        if new_value > self.max_value {
+            self.max_value = new_value;
+        }
 
         self.values.insert(name.to_string(), new_value);
     }
@@ -89,5 +98,6 @@ fn main() {
 
     content.lines().for_each(|l| execute(&mut registers, l));
 
-    println!("{:?}", registers.values.values().max().unwrap());
+    println!("max values during the operation: {:?}", registers.max_value);
+    println!("current max value: {:?}", registers.values.values().max().unwrap());
 }
