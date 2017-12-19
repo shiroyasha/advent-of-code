@@ -14,12 +14,14 @@ fn dist_test() {
 }
 
 fn traverse(directions : &Vec<&str>) -> (i32, i32, i32) {
-    directions.iter().fold((0, 0, 0), |pos, &dir| {
+    let mut max_dist = 0;
+
+    let pos = directions.iter().fold((0, 0, 0), |pos, &dir| {
         let x = pos.0;
         let y = pos.1;
         let z = pos.2;
 
-        match dir {
+        let new_pos = match dir {
             "ne" => (x+1, y,   z-1),
             "n"  => (x,   y+1, z-1),
             "nw" => (x-1, y+1, z),
@@ -27,8 +29,20 @@ fn traverse(directions : &Vec<&str>) -> (i32, i32, i32) {
             "s"  => (x,   y-1, z+1),
             "se" => (x+1, y-1, z),
             _ => panic!("unknown direction")
+        };
+
+        let d = dist((0, 0, 0), new_pos);
+
+        if d > max_dist {
+            max_dist = d;
         }
-    })
+
+        new_pos
+    });
+
+    println!("{}", max_dist);
+
+    pos
 }
 
 #[test]
