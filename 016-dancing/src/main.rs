@@ -62,6 +62,17 @@ fn dance_test() {
     assert_eq!(dance(&moves, programs.to_string()), "baedc");
 }
 
+fn many_dances() {
+    let mut before = "abcdefghijklmnop";
+    let mut after  = "ionlbkfeajgdmphc";
+
+    let mut moves = "";
+
+    for i in 0..16 {
+
+    }
+}
+
 fn main() {
     let mut moves = String::new();
     let mut file = File::open("input.txt").expect("can't open file");
@@ -70,7 +81,10 @@ fn main() {
     let mut programs : String = "abcdefghijklmnop".to_string();
 
     for i in 0..1_000_000_000 {
-        println!("{}", i);
+        if i % 100 == 0 {
+            println!("{}", i);
+        }
+
         programs = dance(&moves, programs);
     }
 
