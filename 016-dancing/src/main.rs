@@ -1,9 +1,14 @@
-fn dance(moves : &str, programs : String) -> String {
+use std::fs::File;
+use std::io::Read;
 
+fn dance(moves : &str, mut programs : String) -> String {
     moves.split(",").map(|m| m.trim()).for_each(|m| {
+        // print!("{} {} => ", programs, m);
+
         match m.as_bytes()[0] {
             b's' => {
-                let split = m[1..].parse().unwrap();
+                let value : usize = m[1..].parse().unwrap();
+                let split : usize = programs.len() - value;
 
                 programs = format!("{}{}", &programs[split..], &programs[..split]);
             },
@@ -14,22 +19,36 @@ fn dance(moves : &str, programs : String) -> String {
                 let pos_a : usize = parts.next().unwrap().parse().unwrap();
                 let pos_b : usize = parts.next().unwrap().parse().unwrap();
 
-                let mut program_bytes = programs.clone();
+                let mut program_bytes = programs.clone().into_bytes();
 
-                let tmp = program_bytes.as_bytes()[pos_a];
+                let tmp = program_bytes[pos_a];
 
-                program_bytes[pos_a] = program_bytes.as_bytes()[pos_b];
+                program_bytes[pos_a] = program_bytes[pos_b];
                 program_bytes[pos_b] = tmp;
 
-                programs = String::from_utf8_lossy(program_bytes).to_string();
+                programs = String::from_utf8_lossy(&program_bytes).to_string();
             },
 
             b'p' => {
+                let mut parts = m[1..].split("/");
 
+                let pos_a : usize = programs.find(parts.next().unwrap()).unwrap();
+                let pos_b : usize = programs.find(parts.next().unwrap()).unwrap();
+
+                let mut program_bytes = programs.clone().into_bytes();
+
+                let tmp = program_bytes[pos_a];
+
+                program_bytes[pos_a] = program_bytes[pos_b];
+                program_bytes[pos_b] = tmp;
+
+                programs = String::from_utf8_lossy(&program_bytes).to_string();
             },
 
             _ => panic!("wtf")
         }
+
+        // println!("{}", programs);
     });
 
     programs.clone()
@@ -44,5 +63,16 @@ fn dance_test() {
 }
 
 fn main() {
-    println!("Hello, world!");
+    let mut moves = String::new();
+    let mut file = File::open("input.txt").expect("can't open file");
+    file.read_to_string(&mut moves);
+
+    let mut programs : String = "abcdefghijklmnop".to_string();
+
+    for i in 0..1_000_000_000 {
+        println!("{}", i);
+        programs = dance(&moves, programs);
+    }
+
+    println!("{}", programs);
 }
