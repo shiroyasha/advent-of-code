@@ -62,15 +62,47 @@ fn dance_test() {
     assert_eq!(dance(&moves, programs.to_string()), "baedc");
 }
 
-fn many_dances() {
-    let mut before = "abcdefghijklmnop";
-    let mut after  = "ionlbkfeajgdmphc";
+fn many_dances(moves : &str, programs : String) {
+    let mut solutions : Vec<String> = Vec::new();
 
-    let mut moves = "";
+    let mut input = programs.clone();
+    solutions.push(input.clone());
 
-    for i in 0..16 {
+    //
+    // Find the size of the cycle
+    //
 
+    let mut i = 0;
+
+    loop {
+       let solution = dance(&moves, input.clone());
+
+       println!("{:04}: {} -> {}", i, input, solution);
+
+       match solutions.iter().find(|s| s == &&solution) {
+           Some(s) => break,
+           None => ()
+       }
+
+       solutions.push(solution.clone());
+
+       input = solution;
+       i += 1;
     }
+
+    i += 1;
+
+    println!("cycle_size: {}", i);
+
+    // Calculate the 1_000_000_000 iteration by using the power of the %
+
+    let mut input = programs.clone();
+
+    for i in 0..(1_000_000_000 % i) {
+       input = dance(&moves, input.clone());
+    }
+
+    println!("{}", input);
 }
 
 fn main() {
@@ -80,13 +112,7 @@ fn main() {
 
     let mut programs : String = "abcdefghijklmnop".to_string();
 
-    for i in 0..1_000_000_000 {
-        if i % 100 == 0 {
-            println!("{}", i);
-        }
-
-        programs = dance(&moves, programs);
-    }
-
     println!("{}", programs);
+
+    many_dances(&moves, "abcdefghijklmnop".to_string());
 }
