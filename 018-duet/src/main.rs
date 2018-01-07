@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::{thread, time};
 use std::fs::File;
 use std::io::Read;
 
@@ -16,19 +15,16 @@ fn execute(input : &str) -> i64 {
     let instructions : Vec<&str> = input.lines().collect();
     let mut registers : HashMap<&str, i64> = HashMap::new();
     let mut sounds : Vec<i64> = Vec::new();
-    let mut current = 0;
-    let mut recovered = 0;
+    let mut current : i64 = 0;
 
-    while current >= 0 && current < instructions.len() {
-
+    while current >= 0 && current < (instructions.len() as i64) {
         for (k, v) in &registers {
             print!("{}:{} ", k, v);
         }
 
-        println!("\n{}", instructions[current]);
-        // thread::sleep(time::Duration::from_millis(1000));
+        println!("\n{}", instructions[current as usize]);
 
-        let mut words = instructions[current].split_whitespace();
+        let mut words = instructions[current as usize].split_whitespace();
 
         match words.next() {
             Some("snd") => {
@@ -118,7 +114,7 @@ fn execute(input : &str) -> i64 {
                 };
 
                 if registers[name] > 0 {
-                    current = ((current as i64) + value) as usize;
+                    current = current + value;
                 } else {
                     current += 1;
                 }
@@ -131,7 +127,7 @@ fn execute(input : &str) -> i64 {
         println!("-----------------------------------");
     }
 
-    recovered
+    0
 }
 
 #[test]
