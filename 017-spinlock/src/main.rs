@@ -1,24 +1,22 @@
-fn spin(steps : usize) -> i32 {
-    let mut circular_buffer = Vec::with_capacity(50_000_000);
-    circular_buffer.push(0);
+fn spin(steps : usize) -> i64 {
     let mut current_pos : usize = 0;
+    let mut res : i64 = 0;
 
-    for i in 0..50_000_000 {
+    for i in 1..50_000_000 {
         if i % 100_000 == 0 {
             println!("{}", i);
         }
-        // println!("{:?}", circular_buffer);
 
-        current_pos = (current_pos + steps) % circular_buffer.len();
+        current_pos = (current_pos + steps) % i;
 
-        circular_buffer.insert(current_pos, i + 1);
+        if current_pos == 0 {
+            res = i as i64;
+        }
+
         current_pos += 1;
-
-        // println!("{:?}, {}", circular_buffer, current_pos);
-        // println!("----------------------");
     }
 
-    circular_buffer[1]
+    res
 }
 
 #[test]
