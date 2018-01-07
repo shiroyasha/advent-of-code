@@ -3,7 +3,50 @@ use std::io::Read;
 
 mod program;
 
-use program::Program;
+use program::{Program,State};
+
+fn transfer(p1 : &mut Program, p2 : &mut Program) {
+    for v in &p1.sent {
+        p2.incomming.insert(0, v.clone());
+    }
+
+    p1.sent = Vec::new();
+}
+
+fn is_finished(p1 : &Program, p2 : &Program) -> bool {
+    println!("STATES: {:?}, {:?}, {:?}, {:?}", p1.state, p2.state, p1.incomming, p2.incomming);
+
+    if p1.state == State::Finished && p2.state == State::Finished {
+        return true;
+    }
+
+    // deadlock
+    if p1.state == State::Locked && p1.incomming.len() == 0 && p2.state == State::Locked && p2.incomming.len() == 0 {
+        return true;
+    }
+
+    false
+}
+
+fn execute(source : &str) -> i64 {
+    let mut p1 = Program::new(0, source);
+    let mut p2 = Program::new(1, source);
+
+    while !is_finished(&p1, &p2) {
+        p1.run();
+
+        println!("BEFORE TRANSFER: {:?}", p1.sent);
+
+        transfer(&mut p1, &mut p2);
+
+        println!("AFTER TRANSFER: {:?}", p2.incomming);
+
+        p2.run();
+        transfer(&mut p2, &mut p1);
+    }
+
+    p2.sent_count
+}
 
 fn main() {
     let mut content = String::new();
@@ -11,30 +54,37 @@ fn main() {
 
     file.read_to_string(&mut content).expect("can't read file");
 
-    let mut p = Program::new(&content);
+    println!("{}", execute(&content));
+}
 
-    p.run();
+#[test]
+fn transfer_test() {
+    let mut p1 = Program::new(0, "");
+    let mut p2 = Program::new(1, "");
 
-    println!("{}", p.result);
+    p1.sent.push(1);
+    p1.sent.push(2);
+    p1.sent.push(3);
+
+    p2.incomming.push(4);
+    p2.incomming.push(5);
+
+    transfer(&mut p1, &mut p2);
+
+    assert_eq!(p1.sent, vec![]);
+    assert_eq!(p2.incomming, vec![3, 2, 1, 4, 5]);
 }
 
 #[test]
 fn execute_test() {
-    let input = "set a 1
-add a 2
-mul a a
-mod a 5
-snd a
-set a 0
+    let source = "snd 1
+snd 2
+snd p
 rcv a
-jgz a -1
-set a 1
-jgz a -2
+rcv b
+rcv c
+rcv d
 ";
 
-    let mut p = Program::new(&input);
-
-    p.run();
-
-   assert_eq!(p.result, 4);
+   assert_eq!(execute(source), 3);
 }
