@@ -24,7 +24,7 @@ fn load_map(filename : &str) -> Vec<Vec<char>> {
     result
 }
 
-fn route(filename : &str) -> String {
+fn route(filename : &str) -> (String, i64) {
     let map : Vec<Vec<char>> = load_map(filename);
 
     let mut path = String::new();
@@ -32,8 +32,11 @@ fn route(filename : &str) -> String {
     let mut x = map[0].iter().position(|c| *c == '|').unwrap();
     let mut y = 0;
     let mut dir = Direction::Down;
+    let mut steps = 0;
 
     while map[y][x] != ' ' {
+        steps += 1;
+
         println!("{},{}", x, y);
 
         if map[y][x].is_alphabetic() {
@@ -99,14 +102,14 @@ fn route(filename : &str) -> String {
         }
     }
 
-    path
+    (path, steps)
 }
 
 fn main() {
-    println!("{}", route("input.txt"));
+    println!("{:?}", route("input.txt"));
 }
 
 #[test]
 fn route_test() {
-    assert_eq!(route("test_input.txt"), "ABCDEF".to_string());
+    assert_eq!(route("test_input.txt"), ("ABCDEF".to_string(), 38));
 }
