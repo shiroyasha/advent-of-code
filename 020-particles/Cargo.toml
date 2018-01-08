@@ -1,0 +1,7 @@
+[package]
+name = "particles"
+version = "0.1.0"
+authors = ["Igor Šarčević <igor@renderedtext.com>"]
+
+[dependencies]
+regex = "0.2"
