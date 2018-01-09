@@ -5,7 +5,7 @@ use std::io::Read;
 use regex::Regex;
 use std::cmp::Ordering;
 
-#[derive(Eq, Debug)]
+#[derive(Eq, Debug, Clone)]
 struct Particle {
     index : usize,
     pos: (i64, i64, i64),
@@ -48,6 +48,12 @@ impl Ord for Particle {
     }
 }
 
+impl Particle {
+    fn advance(&mut self) {
+        self.vel = (self.vel.0 + self.acc.0, self.vel.1 + self.acc.1, self.vel.2 + self.acc.2);
+        self.pos = (self.pos.0 + self.vel.0, self.pos.1 + self.vel.1, self.pos.2 + self.vel.2);
+    }
+}
 
 fn parse(filename : &str) -> Vec<Particle> {
     let mut file = File::open(filename).expect("Can't open file");
@@ -80,8 +86,47 @@ fn closest(filename : &str) -> usize {
     particles.iter().min_by(|p1, p2| p1.cmp(&p2)).unwrap().index
 }
 
+fn simulate(filename : &str) -> usize {
+    let mut particles = parse(filename);
+    let mut count = 0;
+    let mut non_changed_count = 0;
+
+    loop {
+        println!("{}, {}", count, non_changed_count);
+
+        for p in particles.iter_mut() {
+            p.advance();
+        }
+
+        let mut new_particles = Vec::new();
+
+        for p in particles.iter() {
+            let collided = particles.iter().filter(|other| p.index != other.index).any(|other| { other.pos == p.pos });
+
+            if !collided {
+                new_particles.push(p.clone());
+            }
+        }
+
+        particles = new_particles;
+
+        if count == particles.len() {
+            non_changed_count += 1;
+
+            if non_changed_count > 500 {
+                break;
+            }
+        } else {
+           non_changed_count = 0;
+           count = particles.len();
+        }
+    }
+
+    count
+}
+
 fn main() {
-    println!("{:?}", closest("input.txt"));
+    println!("{:?}", simulate("input.txt"));
 }
 
 #[test]
