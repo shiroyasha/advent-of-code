@@ -52,12 +52,24 @@ fn count_pixels(image : &Image) -> i64 {
     sum
 }
 
-fn process(_image : &Image, _rules: &Vec<Rule>) -> Image {
-    vec![
-        vec!['.', '#', '.'],
-        vec!['.', '.', '#'],
-        vec!['#', '#', '#'],
-    ]
+fn process_segment(segment : &Image, rules : &Vec<Rule>) -> Image {
+    vec![]
+}
+
+fn join_segments(segments : &Vec<Vec<Image>>) -> Image {
+    vec![]
+}
+
+fn split_into_segments(segments : &Image) -> Vec<Vec<Image>> {
+    vec![]
+}
+
+fn process(image : &Image, rules: &Vec<Rule>) -> Image {
+    let segments : Vec<Vec<Image>> = split_into_segments(image).iter().map(|row : &Vec<Image>| {
+        row.iter().map(|segment : &Image| process_segment(segment, &rules)).collect()
+    }).collect();
+
+    join_segments(&segments)
 }
 
 fn main() {
