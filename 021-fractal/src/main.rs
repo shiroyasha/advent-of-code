@@ -3,6 +3,7 @@ use std::io::Read;
 use std::fmt;
 
 type Pattern = Vec<char>;
+type Image = Vec<Vec<char>>;
 
 struct Rule {
     input: Vec<Pattern>,
@@ -31,10 +32,53 @@ fn parse(filename : &str) -> Vec<Rule> {
     }).collect()
 }
 
+fn display(image : &Image) {
+    for row in image {
+        println!("{:?}", row);
+    }
+}
+
+fn count_pixels(image : &Image) -> i64 {
+    let mut sum = 0;
+
+    for row in image {
+        for pixel in row {
+            if pixel == &'#' {
+                sum += 1;
+            }
+        }
+    }
+
+    sum
+}
+
+fn process(_image : &Image, _rules: &Vec<Rule>) -> Image {
+    vec![
+        vec!['.', '#', '.'],
+        vec!['.', '.', '#'],
+        vec!['#', '#', '#'],
+    ]
+}
+
 fn main() {
     let rules = parse("input.txt");
 
-    for r in rules {
+    let mut image = vec![
+        vec!['.', '#', '.'],
+        vec!['.', '.', '#'],
+        vec!['#', '#', '#'],
+    ];
+
+    for r in rules.iter() {
         println!("{}", r);
     }
+
+    for _ in 1..5 {
+        image = process(&image, &rules);
+
+        println!("-------------------------------------");
+        display(&image);
+    }
+
+    println!("{}", count_pixels(&image));
 }
