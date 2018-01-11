@@ -47,8 +47,6 @@ fn flip_y_image(image: &Image) -> Image {
 
 impl Rule {
     fn matches(&self, image: &Image) -> bool {
-        println!("comparing: {:?} to {:?}", self.input, image);
-
         if image.len() != self.input.len() {
             return false;
         }
@@ -366,28 +364,8 @@ fn join_segments_test() {
 
 fn process_segment(segment : &Image, rules : &Vec<Rule>) -> Image {
     for rule in rules.iter() {
-        let mut flips : Vec<Rule> = vec![];
-
-        flips.push(rule.flip_x().flip_x());
-        flips.push(rule.flip_x());
-        flips.push(rule.flip_y());
-        flips.push(rule.flip_x().flip_y());
-        flips.push(rule.flip_y().flip_x());
-
-        for flip in flips.iter() {
-            let mut rotations : Vec<Rule> = vec![];
-
-            rotations.push(flip.rotate());
-            rotations.push(flip.rotate().rotate());
-            rotations.push(flip.rotate().rotate().rotate());
-            rotations.push(flip.rotate().rotate().rotate().rotate());
-
-            for rotation in rotations.iter() {
-                if rotation.matches(segment) {
-                    println!("rule: {}", rotation);
-                    return rotation.output.clone();
-                }
-            }
+        if rule.matches(segment) {
+            return rule.output.clone();
         }
     }
 
@@ -427,10 +405,6 @@ fn process(image : &Image, rules: &Vec<Rule>) -> Image {
         row.iter().map(|segment : &Image| process_segment(segment, &rules)).collect()
     }).collect();
 
-    for s in segments.iter() {
-        println!("{:?}", s);
-    }
-
     join_segments(&segments)
 }
 
@@ -454,8 +428,38 @@ fn process_test() {
     assert_eq!(count_pixels(&image), 12);
 }
 
+fn generate_all_rule_variations(rules : &Vec<Rule>) -> Vec<Rule> {
+    let mut result : Vec<Rule> = vec![];
+
+    for rule in rules.iter() {
+        let mut flips : Vec<Rule> = vec![];
+
+        flips.push(rule.flip_x().flip_x());
+        flips.push(rule.flip_x());
+        flips.push(rule.flip_y());
+        flips.push(rule.flip_x().flip_y());
+        flips.push(rule.flip_y().flip_x());
+
+        for flip in flips.iter() {
+            let mut rotations : Vec<Rule> = vec![];
+
+            rotations.push(flip.rotate());
+            rotations.push(flip.rotate().rotate());
+            rotations.push(flip.rotate().rotate().rotate());
+            rotations.push(flip.rotate().rotate().rotate().rotate());
+
+            for rotation in rotations.iter() {
+                result.push(rotation.flip_x().flip_x());
+            }
+        }
+    }
+
+    result
+}
+
 fn main() {
     let rules = parse("input.txt");
+    let all_rules = generate_all_rule_variations(&rules);
 
     let mut image = vec![
         vec!['.', '#', '.'],
@@ -463,16 +467,17 @@ fn main() {
         vec!['#', '#', '#'],
     ];
 
-    for r in rules.iter() {
-        println!("{}", r);
-    }
+    // for r in rules.iter() {
+    //     println!("{}", r);
+    // }
 
     println!("=====================================");
 
     display(&image);
 
-    for _ in 0..5 {
-        image = process(&image, &rules);
+    for i in 0..18 {
+        println!("{}", i);
+        image = process(&image, &all_rules);
 
         println!("-------------------------------------");
         display(&image);
