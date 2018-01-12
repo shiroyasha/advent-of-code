@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::Read;
 
+#[derive(Clone)]
 enum Direction {
     Up,
     Down,
@@ -8,18 +9,22 @@ enum Direction {
     Right
 }
 
+#[derive(Clone)]
+enum State {
+    Clean,
+    Weakened,
+    Infected,
+    Flagged
+}
+
 struct Map {
-    field: Vec<Vec<i8>>,
+    field: Vec<Vec<State>>,
     x: usize,
     y: usize,
     direction: Direction,
 }
 
 impl Map {
-    fn is_infected(&self) -> bool {
-        self.field[self.y][self.x] == 1
-    }
-
     fn turn_right(&mut self) {
         match self.direction {
             Direction::Up    => self.direction = Direction::Right,
@@ -38,14 +43,6 @@ impl Map {
         }
     }
 
-    fn clean(&mut self) {
-        self.field[self.y][self.x] = 0;
-    }
-
-    fn infect(&mut self) {
-        self.field[self.y][self.x] = 1;
-    }
-
     fn advance(&mut self) {
         match self.direction {
             Direction::Up    => self.y -= 1,
@@ -62,13 +59,13 @@ fn parse(filename : &str) -> Map {
 
     file.read_to_string(&mut content).expect("Can't read from file");
 
-    let mut field = Vec::with_capacity(20_000);
+    let mut field : Vec<Vec<State>> = Vec::with_capacity(1_000);
 
     println!("A");
 
-    for _ in 0..20_000 {
-        let mut row = vec![];
-        row.resize(20_000, 0);
+    for _ in 0..1_000 {
+        let mut row : Vec<State> = vec![];
+        row.resize(1_000, State::Clean);
 
         field.push(row);
     }
@@ -78,9 +75,9 @@ fn parse(filename : &str) -> Map {
     content.lines().enumerate().for_each(|(i, line)| {
         line.chars().enumerate().for_each(|(j, chr)| {
             if chr == '#' {
-                field[10_000 + i][10_000 + j] = 1;
+                field[500 + i][500 + j] = State::Infected;
             } else {
-                field[10_000 + i][10_000 + j] = 0;
+                field[500 + i][500 + j] = State::Clean;
             }
         });
     });
@@ -94,8 +91,8 @@ fn parse(filename : &str) -> Map {
 
     Map {
         field: field,
-        x: 10_000 + width/2,
-        y: 10_000 + height/2,
+        x: 500 + width/2,
+        y: 500 + height/2,
         direction: Direction::Up
     }
 }
@@ -104,39 +101,54 @@ fn walk(filename : &str) -> i64 {
     let mut map = parse(filename);
     let mut infection_count = 0;
 
-    for _ in 0..10_000 {
-        // for i in 9990..10020 {
-        //     for j in 9990..10020 {
+    for index in 0..10_000_000 {
+        // for i in 490..510 {
+        //     for j in 490..510 {
+        //         let symbol = match map.field[i][j] {
+        //             State::Clean => '.',
+        //             State::Weakened => 'W',
+        //             State::Infected => '#',
+        //             State::Flagged => 'F',
+        //         };
+
         //         if i == map.y && j == map.x {
-        //             if map.field[i][j] == 1 {
-        //                 print!("[#]");
-        //             } else {
-        //                 print!("[.]");
-        //             }
+        //             print!("[{}]", symbol);
         //         } else {
-        //             if map.field[i][j] == 1 {
-        //                 print!(" # ");
-        //             } else {
-        //                 print!(" . ");
-        //             }
+        //             print!(" {} ", symbol);
         //         }
         //     }
         //     println!("");
         // }
 
-        println!("{}, {}", map.x, map.y);
-        if map.is_infected() {
-           map.turn_right();
-           map.clean();
-        } else {
-           map.turn_left();
-           map.infect();
-            infection_count += 1;
+        // println!("-------");
+
+        if index % 10_000 == 0 {
+            println!("{}, {}, {}", index, map.x, map.y);
+        }
+
+        match map.field[map.y][map.x] {
+          State::Clean => {
+              map.turn_left();
+              map.field[map.y][map.x] = State::Weakened;
+          },
+          State::Weakened => {
+              map.field[map.y][map.x] = State::Infected;
+              infection_count += 1;
+          },
+          State::Infected => {
+              map.turn_right();
+              map.field[map.y][map.x] = State::Flagged;
+          },
+          State::Flagged => {
+              map.turn_right();
+              map.turn_right();
+
+              map.field[map.y][map.x] = State::Clean;
+          }
         }
 
         map.advance()
     }
-
 
     infection_count
 }
@@ -145,7 +157,7 @@ fn walk(filename : &str) -> i64 {
 fn walk_test() {
     let infection_count = walk("test_input.txt");
 
-    assert_eq!(infection_count, 5587);
+    assert_eq!(infection_count, 2511944);
 }
 
 fn main() {
