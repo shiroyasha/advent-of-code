@@ -29,7 +29,7 @@ fn parse(filename : &str) -> Vec<Magnet> {
     }).collect()
 }
 
-fn dfs(start : i64, magnets: Vec<&Magnet>) -> i64 {
+fn dfs(start : i64, magnets: Vec<&Magnet>) -> (i64, i64) {
     let mut connectable = vec![];
 
     for m in magnets.iter() {
@@ -41,7 +41,7 @@ fn dfs(start : i64, magnets: Vec<&Magnet>) -> i64 {
     let size = connectable.len();
 
     if size == 0 {
-        return 0;
+        return (0, 0);
     } else {
        connectable.iter().map(|m| {
            let mut others = vec![];
@@ -54,12 +54,22 @@ fn dfs(start : i64, magnets: Vec<&Magnet>) -> i64 {
 
           if m.a == start {
               // print!("--{}/{}", m.a, m.b);
-              m.value() + dfs(m.b, others)
+              let (len, strength) = dfs(m.b, others);
+
+              (len+1, strength + m.value())
           } else {
               // print!("--{}/{}", m.a, m.b);
-              m.value() + dfs(m.a, others)
+              let (len, strength) = dfs(m.a, others);
+
+              (len+1, strength + m.value())
           }
-       }).max().unwrap()
+       }).max_by(|a, b| {
+           if a.0 == b.0 {
+               a.1.cmp(&b.1)
+           } else {
+               a.0.cmp(&b.0)
+           }
+       }).unwrap()
     }
 }
 
@@ -70,12 +80,14 @@ fn calculate(filename : &str) -> i64 {
         println!("{}/{}", m.a, m.b);
     }
 
-    dfs(0, magnets.iter().collect())
+    let (_, strength) = dfs(0, magnets.iter().collect());
+
+    strength
 }
 
 #[test]
 fn calculate_test() {
-    assert_eq!(calculate("test_input.txt"), 31);
+    assert_eq!(calculate("test_input.txt"), 19);
 }
 
 fn main() {
