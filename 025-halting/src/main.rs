@@ -139,8 +139,38 @@ fn parse(filename : &str) -> Program {
 
 fn turing(filename : &str) -> i64 {
     let program = parse(filename);
+    let mut tape = vec![];
 
-    0
+    let tape_len : usize = (program.header.steps as usize) * 2;
+    tape.resize(tape_len, 0);
+
+    let mut current = tape_len / 2;
+    let mut state_name = program.header.start;
+
+    for _ in 0..program.header.steps {
+        let value = tape[current];
+        let state = program.states.iter().find(|s| s.name == state_name).unwrap();
+
+        // println!("{}, {}", value, state.name);
+
+        let action = if value == 0 {
+            &state.action_on_zero
+        } else {
+            &state.action_on_one
+        };
+
+        tape[current] = action.write;
+
+        if action.movement == Direction::Left {
+            current += 1;
+        } else {
+            current -= 1;
+        }
+
+        state_name = action.continue_with.clone();
+    }
+
+    tape.iter().sum()
 }
 
 fn main() {
