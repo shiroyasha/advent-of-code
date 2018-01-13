@@ -59,14 +59,20 @@ fn parse_action(lines: &mut std::str::Lines) -> Action {
     let first_line = lines.next().unwrap();
     let write : String = first_line.chars().skip(first_line.len()-2).take(1).collect();
 
-    lines.next(); // TODO
+    let last_word_on_second_line = lines.next().unwrap().split_whitespace().rev().next().unwrap();
+
+    let movement = if last_word_on_second_line == "left." {
+        Direction::Left
+    } else {
+        Direction::Right
+    };
 
     let last_line = lines.next().unwrap();
-    let continue_with = last_line.chars().skip(first_line.len()-2).take(1).collect();
+    let continue_with = last_line.chars().skip(last_line.len()-2).take(1).collect();
 
     Action {
         write: write.parse().unwrap(),
-        movement: Direction::Left,
+        movement: movement,
         continue_with: continue_with
     }
 }
@@ -102,7 +108,7 @@ fn parse_state_test() {
     assert_eq!(parse_state(state).name, "A");
 
     assert_eq!(parse_state(state).action_on_zero.write, 1);
-    assert_eq!(parse_state(state).action_on_zero.movement, Direction::Left);
+    assert_eq!(parse_state(state).action_on_zero.movement, Direction::Right);
     assert_eq!(parse_state(state).action_on_zero.continue_with, "B");
 
     assert_eq!(parse_state(state).action_on_one.write, 0);
