@@ -6,4 +6,4 @@ https://adventofcode.com
 
 ![](finished.png)
 
-1
+2
