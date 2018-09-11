@@ -15,5 +15,6 @@ blocks:
       jobs:
       - name: Display
         commands:
+          - cat a.txt
           - ls
           - env
