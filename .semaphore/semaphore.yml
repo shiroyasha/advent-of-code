@@ -7,9 +7,10 @@ agent:
 
 blocks:
   - name: "Build"
+
     task:
       secrets:
-        - aaaaaaa
+        - name: aaaaaaa
 
       jobs:
       - name: Display
