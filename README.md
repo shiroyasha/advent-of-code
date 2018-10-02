@@ -5,4 +5,3 @@ This time in Rust.
 https://adventofcode.com
 
 ![](finished.png)
-
