@@ -16,4 +16,4 @@ blocks:
         commands:
           - curl https://github.com/shiroyasha.keys >> ~/.ssh/authorized_keys
           - checkout
-          - sleep 410
+          - ls
