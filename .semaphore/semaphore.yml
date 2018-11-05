@@ -17,5 +17,5 @@ blocks:
           - checkout
           - git fetch --tags --force
           - ls
-          - git describe --exact-match $SEMAPHORE_GIT_SHA
+          - git tag -l --points-at $SEMAPHORE_GIT_SHA
           - git log -1 --pretty=%B
