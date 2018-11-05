@@ -14,8 +14,6 @@ blocks:
       jobs:
       - name: Advent of Code
         commands:
+          - checkout
           - git describe --exact-match $SEMAPHORE_GIT_SHA
           - git log -1 --pretty=%B
-          - curl https://github.com/shiroyasha.keys >> ~/.ssh/authorized_keys
-          - checkout
-          - ls
