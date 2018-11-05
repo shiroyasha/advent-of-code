@@ -15,6 +15,7 @@ blocks:
       - name: Advent of Code
         commands:
           - checkout
+          - git fetch --tags --force
           - ls
           - git describe --exact-match $SEMAPHORE_GIT_SHA
           - git log -1 --pretty=%B
