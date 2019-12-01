@@ -13,7 +13,7 @@ func check(e error) {
 	}
 }
 
-func loadMasses(filename string) []int {
+func loadModuleMasses(filename string) []int {
 	result := []int{}
 
 	inputFile, err := os.OpenFile(filename, os.O_RDONLY, os.ModePerm)
@@ -67,9 +67,9 @@ func main() {
 	fuelForModules := 0
 	totalFuel := 0
 
-	masses := loadMasses("input1.txt")
+	moduleMasses := loadModuleMasses("input1.txt")
 
-	for _, m := range masses {
+	for _, m := range moduleMasses {
 		fuel := fuelForMass(m)
 
 		fuelForModules += fuel
