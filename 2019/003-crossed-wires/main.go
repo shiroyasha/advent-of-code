@@ -5,11 +5,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-
-	color "image/color"
-
-	plot "gonum.org/v1/plot"
-	plotter "gonum.org/v1/plot/plotter"
 )
 
 type Point struct {
@@ -32,307 +27,133 @@ func (p *Point) Manhattan() int {
 	return a + b
 }
 
-type Segment struct {
-	A Point
-	B Point
-}
-
-func (s *Segment) IsHorizontal() bool {
-	return s.A.Y == s.B.Y
-}
-
-func (s *Segment) IsVertical() bool {
-	return s.A.X == s.B.X
-}
-
-func (s *Segment) Contains(p *Point) bool {
-	if s.IsHorizontal() {
-		if s.A.Y != p.Y {
-			return false
-		}
-
-		if s.A.X <= s.B.X {
-			return p.X >= s.A.X && p.X <= s.B.X
-		}
-
-		if s.A.X >= s.B.X {
-			return p.X >= s.B.X && p.X <= s.A.X
-		}
-
-		return false
-	}
-
-	if s.IsVertical() {
-		if s.A.X != p.X {
-			return false
-		}
-
-		if s.A.Y <= s.B.Y {
-			return p.Y >= s.A.Y && p.Y <= s.B.Y
-		}
-
-		if s.A.Y >= s.B.Y {
-			return p.Y >= s.B.Y && p.Y <= s.A.Y
-		}
-
-		return false
-	}
-
-	return false
-}
-
-func (s *Segment) Points() []Point {
-	result := []Point{}
-
-	if s.IsHorizontal() {
-		if s.A.X <= s.B.X {
-			for i := s.A.X; i <= s.B.X; i++ {
-				result = append(result, Point{X: i, Y: s.A.Y})
-			}
-		}
-
-		if s.A.X > s.B.X {
-			for i := s.A.X; i > s.B.X; i-- {
-				result = append(result, Point{X: i, Y: s.A.Y})
-			}
-		}
-	}
-
-	if s.IsVertical() {
-		if s.A.Y <= s.B.Y {
-			for i := s.A.Y; i <= s.B.Y; i++ {
-				result = append(result, Point{X: s.A.X, Y: i})
-			}
-		}
-
-		if s.A.Y > s.B.Y {
-			for i := s.A.Y; i > s.B.Y; i-- {
-				result = append(result, Point{X: s.A.X, Y: i})
-			}
-		}
-	}
-
-	return result
-}
-
 type Wire struct {
-	path string
+	instructions []string
 }
 
-func NewWire(path string) *Wire {
-	return &Wire{path: path}
+func NewWire(instructions string) *Wire {
+	return &Wire{instructions: strings.Split(instructions, ",")}
 }
 
-func (w *Wire) Segments() []Segment {
-	segments := []Segment{}
+type Step struct {
+	X int
+	Y int
+}
 
-	a := Point{X: 0, Y: 0}
+var (
+	Up    = Step{X: 0, Y: 1}
+	Down  = Step{X: 0, Y: -1}
+	Left  = Step{X: -1, Y: 0}
+	Right = Step{X: +1, Y: 0}
+)
 
-	instructions := strings.Split(w.path, ",")
+func (w *Wire) Steps() []Step {
+	result := []Step{}
 
-	for _, d := range instructions {
-		var b Point
+	for _, i := range w.instructions {
+		step := Up
 
-		direction := d[0]
-		distance, _ := strconv.Atoi(d[1:len(d)])
-
-		switch direction {
-		case 'U':
-			b = Point{a.X, a.Y + distance}
+		switch i[0] {
 		case 'D':
-			b = Point{a.X, a.Y - distance}
+			step = Down
+		case 'U':
+			step = Up
 		case 'L':
-			b = Point{a.X - distance, a.Y}
+			step = Left
 		case 'R':
-			b = Point{a.X + distance, a.Y}
+			step = Right
 		}
 
-		segments = append(segments, Segment{A: a, B: b})
+		l, _ := strconv.Atoi(i[1:len(i)])
 
-		a = b
-	}
+		fmt.Printf("%+v ", step)
+		fmt.Println(l)
 
-	return segments
-}
-
-func (w *Wire) Points() []Point {
-	result := []Point{}
-	segments := w.Segments()
-
-	for _, s := range segments {
-		result = append(result, s.Points()...)
-	}
-
-	return result
-}
-
-//
-// Finds the intersection of two line segments.
-//
-// This is not a generic algorith, and only works for segments that are parallel
-// to the x or y axis.
-//
-func SegmentIntersection(s1, s2 Segment) (*Point, error) {
-	//
-	// check if the lines are parallel
-	//
-	if s1.IsHorizontal() && s2.IsHorizontal() {
-		return nil, fmt.Errorf("Segments are parallel")
-	}
-	if s1.IsVertical() && s2.IsVertical() {
-		return nil, fmt.Errorf("Segments are parallel")
-	}
-
-	if s1.IsVertical() && s2.IsHorizontal() {
-		p := &Point{X: s1.A.X, Y: s2.A.Y}
-
-		if s1.Contains(p) && s2.Contains(p) {
-			return p, nil
-		} else {
-			return nil, fmt.Errorf("No intersection found")
-		}
-	}
-
-	if s1.IsHorizontal() && s2.IsVertical() {
-		p := &Point{X: s2.A.X, Y: s1.A.Y}
-
-		if s1.Contains(p) && s2.Contains(p) {
-			return p, nil
-		} else {
-			return nil, fmt.Errorf("No intersection found")
-		}
-	}
-
-	return nil, fmt.Errorf("No intersection found")
-}
-
-func WireIntersections(w1, w2 *Wire) []Point {
-	result := []Point{}
-
-	segments1 := w1.Segments()
-	segments2 := w2.Segments()
-
-	for _, s1 := range segments1 {
-		for _, s2 := range segments2 {
-			i, err := SegmentIntersection(s1, s2)
-
-			if err != nil || (i.X == 0 && i.Y == 0) {
-				continue
-			}
-
-			if err == nil {
-				result = append(result, *i)
-			}
+		for j := 0; j < l; j++ {
+			result = append(result, step)
 		}
 	}
 
 	return result
-}
-
-func StepsToReachPoint(w *Wire, intersection Point) int {
-	points := w.Points()
-	stepsToPoint := map[Point]int{}
-
-	steps := 0
-
-	for _, p := range points {
-		if stepsToPoint[p] == 0 {
-			stepsToPoint[p] = steps
-		} else {
-			steps = stepsToPoint[p]
-		}
-
-		steps += 1
-	}
-
-	return stepsToPoint[intersection]
-}
-
-func FindMinStepsToReach(w1, w2 *Wire, intersections []Point) int {
-	min := math.MaxInt32
-
-	for _, i := range intersections {
-		steps1 := StepsToReachPoint(w1, i)
-		steps2 := StepsToReachPoint(w2, i)
-
-		steps := steps1 + steps2
-
-		fmt.Printf("%v %v %v %v\n", i, steps1, steps2, steps)
-
-		if steps < min {
-			min = steps
-		}
-	}
-
-	return min
-}
-
-func Plot(w1, w2 *Wire, intersections []Point) {
-	p, _ := plot.New()
-
-	for _, s := range w1.Segments() {
-		pts := plotter.XYs{
-			{X: float64(s.A.X), Y: float64(s.A.Y)},
-			{X: float64(s.B.X), Y: float64(s.B.Y)},
-		}
-
-		line, _ := plotter.NewLine(pts)
-		line.LineStyle.Color = color.RGBA{R: 255, G: 0, B: 0, A: 255}
-
-		p.Add(line)
-	}
-
-	for _, s := range w2.Segments() {
-		pts := plotter.XYs{
-			{X: float64(s.A.X), Y: float64(s.A.Y)},
-			{X: float64(s.B.X), Y: float64(s.B.Y)},
-		}
-
-		line, _ := plotter.NewLine(pts)
-		line.LineStyle.Color = color.RGBA{R: 0, G: 0, B: 255, A: 255}
-
-		p.Add(line)
-	}
-
-	for _, i := range intersections {
-		pts := plotter.XYs{
-			{X: float64(i.X), Y: float64(i.Y)},
-		}
-
-		s, _ := plotter.NewScatter(pts)
-
-		p.Add(s)
-	}
-
-	p.Save(3000, 3000, "/vagrant/wires.png")
 }
 
 func main() {
 	wire1 := NewWire("R993,U847,R868,D286,L665,D860,R823,U934,L341,U49,R762,D480,R899,D23,L273,D892,R43,U740,L940,U502,L361,U283,L852,D630,R384,D758,R655,D358,L751,U970,R72,D245,L188,D34,R355,U373,L786,U188,L304,D621,L956,D839,R607,U279,L459,U340,R412,D901,L929,U256,R495,D462,R369,D138,R926,D551,L343,U237,L434,U952,R421,U263,L663,D694,R687,D522,L47,U8,L399,D930,R928,U73,L581,U452,R80,U610,L998,D797,R584,U772,L521,U292,L959,U356,L940,D894,R774,U957,L813,D650,L891,U309,L254,D271,R791,D484,L399,U106,R463,D39,L210,D154,L380,U86,L136,D228,L284,D267,R195,D727,R739,D393,R395,U703,L385,U483,R433,U222,L945,D104,L605,D814,L656,U860,L474,D672,L812,U789,L29,D256,R857,U436,R927,U99,R171,D727,L244,D910,L347,U789,R49,U598,L218,D834,L574,U647,L185,U986,L273,D363,R848,U531,R837,U433,L795,U923,L182,D915,R367,D347,R867,U789,L776,U568,R969,U923,L765,D589,R772,U715,R38,D968,L845,D327,R721,D928,R267,U94,R763,U799,L946,U130,L649,U521,L569,D139,R584,D27,L823,D918,L450,D390,R149,U237,L696,U258,L757,U810,L216,U202,L966,U157,R702,D623,R740,D560,R932,D587,L197,D56,R695,U439,R655,U576,R695,D176,L800,D374,R806,U969,L664,U216,L170,D415,R485,U188,L444,D613,R728,U508,L644,U289,R831,D978,R711,U973,R3,U551,R377,U114,L15,U812,R210,D829,L536,D883,L843,D427,L311,D680,R482,D69,R125,D953,L896,D85,R376,D683,R374,U415,L3,U843,L802,D124,R299,U345,L696,D276,L87,D98,R619,D321,R348,D806,L789,U657,R590,D747,L477,U251,R854,D351,L82,D982,R906,D94,R285,U756,L737,D377,L951,U126,L852,D751,L946,U696,L44,D709,R851,D364,R222")
 	wire2 := NewWire("L1002,D658,L695,U170,L117,U93,R700,D960,L631,U483,L640,D699,R865,U886,L59,D795,R265,U803,R705,D580,R519,U685,R126,D888,R498,U934,L980,U734,L91,D50,R805,U197,R730,U363,R337,U594,L666,U702,L237,D140,L72,U980,L167,U598,L726,U497,L340,D477,L304,U945,R956,U113,L43,D4,R890,D316,R916,D644,R704,D398,L905,U361,R420,U31,L317,U338,R703,D211,R27,D477,L746,U813,R705,U191,L504,D434,R697,D945,R835,D374,L512,U269,L299,U448,R715,U363,R266,U720,L611,U672,L509,D983,L21,U895,L340,D794,R528,U603,R154,D610,L582,U420,L696,U599,R16,U610,L134,D533,R156,D338,L761,U49,L335,D238,R146,U97,L997,U545,L896,D855,L653,D789,R516,D371,L99,D731,R868,D182,R535,D35,R190,D618,R10,D694,L567,D17,R356,U820,R671,D883,R807,U218,L738,U225,L145,D954,R588,U505,R108,U178,R993,D788,R302,D951,R697,D576,L324,U930,R248,D245,R622,U323,R667,U876,L987,D411,L989,U915,R157,D67,L968,U61,R274,D189,L53,D133,R617,D958,L379,U563,L448,D412,R940,U12,R885,U121,R746,U215,R420,U346,L469,D839,R964,D273,R265,D3,L714,D224,L177,U194,L573,U511,L795,U299,L311,U923,R815,U594,L654,U326,L547,U547,R467,D937,L174,U453,R635,D551,L365,U355,R658,U996,R458,D623,R61,U181,R340,U163,L329,D496,L787,D335,L37,D565,R318,U942,R198,U85,R328,D826,R817,D118,R138,D29,L434,D427,R222,D866,L10,D152,R822,D779,L900,D307,R723,D363,L715,D60,R661,U680,R782,U789,R311,D36,R425,U498,L910,D546,R394,D52,R803,D168,L6,U769,R856,D999,L786,U695,R568,U236,R472,U291,L530,U314,L251,D598,R648,D475,L132,D236,L915,D695,L700,U378,L685,D240,R924,D977,R627,U824,L165")
 
+	// wire1 := NewWire("R75,D30,R83,U83,L12,D49,R71,U7,L72")
+	// wire2 := NewWire("U62,R66,U55,R34,D71,R55,D58,R83")
+
 	// wire1 := NewWire("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51")
 	// wire2 := NewWire("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7")
 
-	// wire1 := NewWire("R8,U5,L5,D3")
-	// wire2 := NewWire("U7,R6,D4,L4")
+	intersections := []Point{}
 
-	intersections := WireIntersections(wire1, wire2)
-	minManhattan := math.MaxInt32
+	var X, Y int // current x and y position on the plane
 
-	fmt.Println(intersections)
+	positions1 := map[Point]int{}
+	X = 0
+	Y = 0
+	steps := 0
 
-	for _, i := range intersections {
-		if i.Manhattan() < minManhattan {
-			minManhattan = i.Manhattan()
+	for _, s := range wire1.Steps() {
+		X += s.X
+		Y += s.Y
+
+		current := Point{X: X, Y: Y}
+
+		steps += 1
+
+		if positions1[current] == 0 {
+			positions1[current] = steps
 		}
 	}
 
-	fmt.Println(minManhattan)
+	positions2 := map[Point]int{}
+	X = 0
+	Y = 0
+	steps = 0
 
-	Plot(wire1, wire2, intersections)
+	for _, s := range wire2.Steps() {
+		X += s.X
+		Y += s.Y
 
-	steps := FindMinStepsToReach(wire1, wire2, intersections)
+		current := Point{X: X, Y: Y}
 
-	fmt.Println(steps)
+		steps += 1
+
+		if positions2[current] == 0 {
+			positions2[current] = steps
+		}
+
+		// intersection !!!
+		if positions1[current] != 0 {
+			intersections = append(intersections, current)
+		}
+	}
+
+	fmt.Println(intersections)
+
+	// part 1
+
+	minManhattan := math.MaxInt32
+	for _, p := range intersections {
+		if minManhattan > p.Manhattan() {
+			minManhattan = p.Manhattan()
+		}
+	}
+
+	fmt.Printf("Part 1: %d\n", minManhattan)
+
+	minSteps := math.MaxInt32
+	for _, i := range intersections {
+		s1 := positions1[i]
+		s2 := positions2[i]
+
+		if minSteps > s1+s2 {
+			minSteps = s1 + s2
+		}
+	}
+
+	fmt.Printf("Part 2: %d\n", minSteps)
 }
