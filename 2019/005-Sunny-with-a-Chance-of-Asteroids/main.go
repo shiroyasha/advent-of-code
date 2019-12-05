@@ -5,10 +5,21 @@ import (
 )
 
 const (
-	OpcodeAdd      = 1
-	OpcodeMultiply = 2
-	OpcodeHalt     = 99
+	OpcodeAdd         = 1
+	OpcodeMultiply    = 2
+	OpcodeGetInput    = 3
+	OpcodeWriteOutput = 4
+	OpcodeHalt        = 99
 )
+
+const (
+	InputModePosition  = 0
+	InputModeImmidiate = 1
+)
+
+type Output struct {
+	values []int
+}
 
 type Program struct {
 	memory   []int
@@ -20,10 +31,7 @@ func NewProgram(code []int) *Program {
 
 	copy(memory, code)
 
-	return &Program{
-		memory:   memory,
-		position: 0,
-	}
+	return &Program{memory: memory, position: 0}
 }
 
 //
@@ -59,33 +67,56 @@ func (p *Program) DumpMemory() {
 	fmt.Print("\n")
 }
 
+func (p *Program) LoadParam(position int, mode int) (int, error) {
+	switch mode {
+	case InputModePosition:
+		pointer, err := p.Read(position)
+		if err != nil {
+			return 0, err
+		}
+
+		value, err := p.Read(pointer)
+		if err != nil {
+			return 0, err
+		}
+
+		return value, nil
+	case InputModeImmidiate:
+		value, err := p.Read(position)
+		if err != nil {
+			return 0, err
+		}
+
+		return value, nil
+	default:
+		return 0, fmt.Errorf("Unknonwn input mode")
+	}
+}
+
 //
 // Run program until halt or error.
 //
-func (p *Program) Run() error {
+func (p *Program) Run(input int, output *Output) error {
 	operation, err := p.Read(p.position)
 	if err != nil {
 		return err
 	}
 
-	switch operation {
+	instruction := operation % 100
+
+	param1Mode := (operation / 100) % 10
+	param2Mode := (operation / 1000) % 10
+
+	fmt.Println(instruction)
+
+	switch instruction {
 	case OpcodeAdd:
-		inputPointer1, err := p.Read(p.position + 1)
+		value1, err := p.LoadParam(p.position+1, param1Mode)
 		if err != nil {
 			return err
 		}
 
-		inputPointer2, err := p.Read(p.position + 2)
-		if err != nil {
-			return err
-		}
-
-		input1, err := p.Read(inputPointer1)
-		if err != nil {
-			return err
-		}
-
-		input2, err := p.Read(inputPointer2)
+		value2, err := p.LoadParam(p.position+2, param2Mode)
 		if err != nil {
 			return err
 		}
@@ -95,24 +126,16 @@ func (p *Program) Run() error {
 			return err
 		}
 
-		p.Write(resultPointer, input1+input2)
+		p.Write(resultPointer, value1+value2)
+
+		p.position += 4
 	case OpcodeMultiply:
-		inputPointer1, err := p.Read(p.position + 1)
+		value1, err := p.LoadParam(p.position+1, param1Mode)
 		if err != nil {
 			return err
 		}
 
-		inputPointer2, err := p.Read(p.position + 2)
-		if err != nil {
-			return err
-		}
-
-		input1, err := p.Read(inputPointer1)
-		if err != nil {
-			return err
-		}
-
-		input2, err := p.Read(inputPointer2)
+		value2, err := p.LoadParam(p.position+2, param2Mode)
 		if err != nil {
 			return err
 		}
@@ -122,88 +145,89 @@ func (p *Program) Run() error {
 			return err
 		}
 
-		p.Write(resultPointer, input1*input2)
+		p.Write(resultPointer, value1*value2)
+
+		p.position += 4
+	case OpcodeGetInput:
+		pointer, err := p.Read(p.position + 1)
+		if err != nil {
+			return err
+		}
+
+		p.Write(pointer, input)
+
+		p.position += 2
+
+	case OpcodeWriteOutput:
+		value, err := p.LoadParam(p.position+1, param1Mode)
+		if err != nil {
+			return err
+		}
+
+		output.values = append(output.values, value)
+
+		p.position += 2
 	case OpcodeHalt:
 		return nil
 	default:
 		return fmt.Errorf("Unknonwn opcode %d", operation)
 	}
 
-	p.position += 4
-
-	return p.Run()
+	return p.Run(input, output)
 }
 
 func main() {
-	programCode := []int{
-		1, 0, 0, 3,
-		1, 1, 2, 3,
-		1, 3, 4, 3,
-		1, 5, 0, 3,
-		2, 9, 1, 19,
-		1, 19, 5, 23,
-		1, 9, 23, 27,
-		2, 27, 6, 31,
-		1, 5, 31, 35,
-		2, 9, 35, 39,
-		2, 6, 39, 43,
-		2, 43, 13, 47,
-		2, 13, 47, 51,
-		1, 10, 51, 55,
-		1, 9, 55, 59,
-		1, 6, 59, 63,
-		2, 63, 9, 67,
-		1, 67, 6, 71,
-		1, 71, 13, 75,
-		1, 6, 75, 79,
-		1, 9, 79, 83,
-		2, 9, 83, 87,
-		1, 87, 6, 91,
-		1, 91, 13, 95,
-		2, 6, 95, 99,
-		1, 10, 99, 103,
-		2, 103, 9, 107,
-		1, 6, 107, 111,
-		1, 10, 111, 115,
-		2, 6, 115, 119,
-		1, 5, 119, 123,
-		1, 123, 13, 127,
-		1, 127, 5, 131,
-		1, 6, 131, 135,
-		2, 135, 13, 139,
-		1, 139, 2, 143,
-		1, 143, 10, 0,
-		99,
-		2, 0, 14, 0,
+	code := []int{
+		3, 225, 1, 225, 6, 6, 1100, 1, 238, 225, 104, 0, 1101, 40, 27, 224, 101, -67, 224, 224, 4,
+		224, 1002, 223, 8, 223, 1001, 224, 2, 224, 1, 224, 223, 223, 1101, 33, 38, 225, 1102, 84,
+		60, 225, 1101, 65, 62, 225, 1002, 36, 13, 224, 1001, 224, -494, 224, 4, 224, 1002, 223,
+		8, 223, 1001, 224, 3, 224, 1, 223, 224, 223, 1102, 86, 5, 224, 101, -430, 224, 224, 4,
+		224, 1002, 223, 8, 223, 101, 6, 224, 224, 1, 223, 224, 223, 1102, 23, 50, 225, 1001, 44,
+		10, 224, 101, -72, 224, 224, 4, 224, 102, 8, 223, 223, 101, 1, 224, 224, 1, 224, 223, 223,
+		102, 47, 217, 224, 1001, 224, -2303, 224, 4, 224, 102, 8, 223, 223, 101, 2, 224, 224, 1,
+		223, 224, 223, 1102, 71, 84, 225, 101, 91, 40, 224, 1001, 224, -151, 224, 4, 224, 1002,
+		223, 8, 223, 1001, 224, 5, 224, 1, 223, 224, 223, 1101, 87, 91, 225, 1102, 71, 19, 225, 1,
+		92, 140, 224, 101, -134, 224, 224, 4, 224, 1002, 223, 8, 223, 101, 1, 224, 224, 1, 224,
+		223, 223, 2, 170, 165, 224, 1001, 224, -1653, 224, 4, 224, 1002, 223, 8, 223, 101, 5,
+		224, 224, 1, 223, 224, 223, 1101, 49, 32, 225, 4, 223, 99, 0, 0, 0, 677, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 1105, 0, 99999, 1105, 227, 247, 1105, 1, 99999, 1005, 227, 99999, 1005, 0,
+		256, 1105, 1, 99999, 1106, 227, 99999, 1106, 0, 265, 1105, 1, 99999,
+		1006, 0, 99999, 1006, 227, 274, 1105, 1, 99999, 1105, 1, 280, 1105,
+		1, 99999, 1, 225, 225, 225, 1101, 294, 0, 0, 105, 1, 0, 1105, 1, 99999,
+		1106, 0, 300, 1105, 1, 99999, 1, 225, 225, 225, 1101, 314, 0, 0, 106,
+		0, 0, 1105, 1, 99999, 1107, 226, 677, 224, 1002, 223, 2, 223, 1006,
+		224, 329, 101, 1, 223, 223, 8, 226, 226, 224, 1002, 223, 2, 223, 1005,
+		224, 344, 101, 1, 223, 223, 1007, 677, 226, 224, 102, 2, 223, 223, 1005,
+		224, 359, 101, 1, 223, 223, 8, 226, 677, 224, 102, 2, 223, 223, 1005, 224,
+		374, 101, 1, 223, 223, 1107, 677, 677, 224, 1002, 223, 2, 223, 1005, 224,
+		389, 1001, 223, 1, 223, 108, 226, 677, 224, 102, 2, 223, 223, 1005, 224,
+		404, 1001, 223, 1, 223, 108, 677, 677, 224, 1002, 223, 2, 223, 1006,
+		224, 419, 101, 1, 223, 223, 107, 677, 677, 224, 102, 2, 223, 223, 1006,
+		224, 434, 101, 1, 223, 223, 108, 226, 226, 224, 1002, 223, 2, 223, 1006,
+		224, 449, 1001, 223, 1, 223, 8, 677, 226, 224, 1002, 223, 2, 223, 1005,
+		224, 464, 101, 1, 223, 223, 1108, 226, 677, 224, 1002, 223, 2, 223,
+		1006, 224, 479, 1001, 223, 1, 223, 1108, 677, 677, 224, 1002, 223,
+		2, 223, 1005, 224, 494, 101, 1, 223, 223, 7, 677, 677, 224, 1002,
+		223, 2, 223, 1005, 224, 509, 101, 1, 223, 223, 1007, 677, 677, 224,
+		1002, 223, 2, 223, 1005, 224, 524, 101, 1, 223, 223, 7, 677, 226, 224,
+		1002, 223, 2, 223, 1005, 224, 539, 101, 1, 223, 223, 1107, 677, 226, 224, 102, 2, 223,
+		223, 1006, 224, 554, 101, 1, 223, 223, 107, 226, 677, 224, 1002, 223, 2,
+		223, 1005, 224, 569, 101, 1, 223, 223, 107, 226, 226, 224, 1002, 223, 2,
+		223, 1005, 224, 584, 101, 1, 223, 223, 1108, 677, 226, 224, 102, 2, 223,
+		223, 1006, 224, 599, 1001, 223, 1, 223, 1008, 677, 677, 224, 102, 2, 223,
+		223, 1006, 224, 614, 101, 1, 223, 223, 7, 226, 677, 224, 102, 2, 223, 223,
+		1005, 224, 629, 101, 1, 223, 223, 1008, 226, 677, 224, 1002, 223, 2, 223,
+		1006, 224, 644, 101, 1, 223, 223, 1007, 226, 226, 224, 1002, 223, 2, 223,
+		1005, 224, 659, 1001, 223, 1, 223, 1008, 226, 226, 224, 102, 2, 2, 23,
+		223, 1006, 224, 674, 1001, 223, 1, 223, 4, 223, 99, 226,
 	}
 
-	for noun := 0; noun < 100; noun++ {
-		for verb := 0; verb < 100; verb++ {
-			fmt.Printf("Trying %d and %d => ", verb, noun)
+	p := NewProgram(code)
 
-			p := NewProgram(programCode)
+	input := 1
+	output := &Output{}
 
-			p.Write(1, noun)
-			p.Write(2, verb)
+	p.Run(input, output)
 
-			err := p.Run()
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			value, err := p.Read(0)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			fmt.Println(value)
-
-			if value == 19690720 {
-				fmt.Println(100*noun + verb)
-				return
-			}
-		}
-	}
+	fmt.Println(output)
 }
