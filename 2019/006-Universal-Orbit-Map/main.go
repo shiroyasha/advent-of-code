@@ -45,6 +45,16 @@ func calculateOrbitDepth(name string, orbits *Orbits, depths *map[string]int) in
 	return depth
 }
 
+func listAllOrbits(name string, orbits *Orbits) []string {
+	parent := (*orbits)[name]
+
+	if parent == "COM" {
+		return []string{"COM"}
+	}
+
+	return append(listAllOrbits(parent, orbits), parent)
+}
+
 func main() {
 	orbits := load("input.txt")
 	depths := map[string]int{}
@@ -65,4 +75,27 @@ func main() {
 	}
 
 	fmt.Println(total)
+
+	santaParents := listAllOrbits("SAN", &orbits)
+	myParents := listAllOrbits("YOU", &orbits)
+
+	fmt.Println(santaParents)
+	fmt.Println(myParents)
+
+	commonParentCount := 0
+
+	for i := 0; i < len(santaParents) || i < len(myParents); i++ {
+		if santaParents[i] == myParents[i] {
+			commonParentCount += 1
+			continue
+		} else {
+			break
+		}
+	}
+
+	fmt.Println(commonParentCount)
+	fmt.Println(len(santaParents))
+	fmt.Println(len(myParents))
+
+	fmt.Println(len(santaParents) - commonParentCount + len(myParents) - commonParentCount)
 }
