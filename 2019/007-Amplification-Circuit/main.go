@@ -27,6 +27,8 @@ type Process struct {
 	output       []int
 	input        []int
 	inputPointer int
+
+	halted bool
 }
 
 func NewProcess(code []int, input []int) *Process {
@@ -39,6 +41,7 @@ func NewProcess(code []int, input []int) *Process {
 		position:     0,
 		input:        input,
 		inputPointer: 0,
+		halted:       false,
 	}
 }
 
@@ -139,6 +142,8 @@ func (p *Process) Run() error {
 		// fmt.Printf("ADD %d %d %d ", value1, value2, resultPointer)
 
 		p.position += 4
+
+		return p.Run()
 	case OpcodeMultiply:
 		value1, err := p.LoadParam(p.position+1, param1Mode)
 		if err != nil {
@@ -160,10 +165,18 @@ func (p *Process) Run() error {
 		// fmt.Printf("MUL %d %d %d ", value1, value2, resultPointer)
 
 		p.position += 4
+
+		return p.Run()
 	case OpcodeGetInput:
 		pointer, err := p.Read(p.position + 1)
 		if err != nil {
 			return err
+		}
+
+		if p.inputPointer == len(p.input) {
+			// no input, program needs to complete
+			fmt.Printf("Waiting for input")
+			return nil
 		}
 
 		p.Write(pointer, p.input[p.inputPointer])
@@ -173,6 +186,7 @@ func (p *Process) Run() error {
 
 		p.position += 2
 
+		return p.Run()
 	case OpcodeWriteOutput:
 		value, err := p.LoadParam(p.position+1, param1Mode)
 		if err != nil {
@@ -185,6 +199,8 @@ func (p *Process) Run() error {
 
 		p.position += 2
 
+		fmt.Printf("Output written")
+		return nil
 	case OpcodeJumpIfTrue:
 		value1, err := p.LoadParam(p.position+1, param1Mode)
 		if err != nil {
@@ -207,6 +223,7 @@ func (p *Process) Run() error {
 
 			p.position += 3
 		}
+		return p.Run()
 
 	case OpcodeJumpIfFalse:
 		value1, err := p.LoadParam(p.position+1, param1Mode)
@@ -231,6 +248,7 @@ func (p *Process) Run() error {
 			p.position += 3
 		}
 
+		return p.Run()
 	case OpcodeLessThan:
 		value1, err := p.LoadParam(p.position+1, param1Mode)
 		if err != nil {
@@ -261,6 +279,7 @@ func (p *Process) Run() error {
 
 		p.position += 4
 
+		return p.Run()
 	case OpcodeEquals:
 		value1, err := p.LoadParam(p.position+1, param1Mode)
 		if err != nil {
@@ -291,18 +310,28 @@ func (p *Process) Run() error {
 
 		p.position += 4
 
+		return p.Run()
 	case OpcodeHalt:
 		// fmt.Println("halt")
 
-		return nil
+		p.halted = true
 
+		return nil
 	default:
 		return fmt.Errorf("Unknonwn opcode %d", operation)
 	}
 
-	// fmt.Printf("\n")
+	panic("How we got here?")
+}
 
-	return p.Run()
+func allHalted(processes []*Process) bool {
+	for _, p := range processes {
+		if !p.halted {
+			return false
+		}
+	}
+
+	return true
 }
 
 func signalStrength(code []int, phaseSettings []int) int {
@@ -316,18 +345,26 @@ func signalStrength(code []int, phaseSettings []int) int {
 
 	input := 0
 
-	for _, a := range amplifiers {
-		a.input = append(a.input, input)
-
-		err := a.Run()
-		if err != nil {
-			panic(err)
+	for {
+		if allHalted(amplifiers) {
+			break
 		}
 
-		input = a.output[0]
+		for i, a := range amplifiers {
+			fmt.Printf("Running ampf %d\n", i)
+
+			a.input = append(a.input, input)
+
+			err := a.Run()
+			if err != nil {
+				panic(err)
+			}
+
+			input = a.output[len(a.output)-1]
+		}
 	}
 
-	return amplifiers[len(amplifiers)-1].output[0]
+	return input
 }
 
 func variationsRec(arr []int, i int, f func([]int)) {
@@ -356,7 +393,7 @@ func main() {
 
 	maxStrength := 0
 
-	variations([]int{0, 1, 2, 3, 4}, func(phaseSettings []int) {
+	variations([]int{5, 6, 7, 8, 9}, func(phaseSettings []int) {
 		fmt.Println(phaseSettings)
 
 		strength := signalStrength(code, phaseSettings)
