@@ -13,9 +13,7 @@ blocks:
           value: prod
       jobs:
       - name: Advent of Code
+        parallelism: 5
         commands:
           - checkout
-          - git fetch --tags --force
-          - ls
-          - git tag -l --points-at $SEMAPHORE_GIT_SHA
-          - git log -1 --pretty=%B
+          - sleep 10
