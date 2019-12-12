@@ -153,19 +153,19 @@ func (m *AsteroidMap) ListVisible(p Pos) []Pos {
 }
 
 func Quadrant(p Pos) int {
-	if p.X < 0 && p.Y <= 0 {
+	if p.X < 0 && p.Y < 0 {
 		return 1
 	}
 
-	if p.X >= 0 && p.Y < 0 {
+	if p.X > 0 && p.Y < 0 {
 		return 2
 	}
 
-	if p.X > 0 && p.Y >= 0 {
+	if p.X > 0 && p.Y > 0 {
 		return 3
 	}
 
-	if p.X >= 0 && p.Y < 0 {
+	if p.X < 0 && p.Y > 0 {
 		return 4
 	}
 
@@ -173,13 +173,37 @@ func Quadrant(p Pos) int {
 }
 
 func CompareAngles(laserPos Pos, p1 Pos, p2 Pos) bool {
-	xDiff1 := p1.X - laserPos.X
-	yDiff1 := p1.Y - laserPos.Y
+	x1 := p1.X - laserPos.X
+	y1 := p1.Y - laserPos.Y
 
-	xDiff2 := p2.X - laserPos.X
-	yDiff2 := p2.Y - laserPos.Y
+	x2 := p2.X - laserPos.X
+	y2 := p2.Y - laserPos.Y
 
-	fmt.Printf("%v %v =>   (%5d %5d)   (%5d %5d)    =>   ", p1, p2, xDiff1, yDiff1, xDiff2, yDiff2)
+	// fmt.Printf("%v %v =>   (%5d %5d)   (%5d %5d)    =>   ", p1, p2, x1, y1, x2, y2)
+	fmt.Printf("%v %v\n", p1, p2)
+
+	for i := 0; i < 10; i++ {
+		for j := 0; j < 10; j++ {
+			if i == p1.Y && j == p1.X {
+				fmt.Printf("1")
+				continue
+			}
+
+			if i == p2.Y && j == p2.X {
+				fmt.Printf("2")
+				continue
+			}
+
+			if i == 1 && j == 1 {
+				fmt.Printf("@")
+				continue
+			}
+
+			fmt.Print(".")
+		}
+		fmt.Println()
+	}
+	fmt.Println()
 
 	defer func() {
 		fmt.Println()
@@ -187,82 +211,80 @@ func CompareAngles(laserPos Pos, p1 Pos, p2 Pos) bool {
 
 	res := false
 
-	// on Y axis
-	if xDiff1 == 0 && xDiff2 == 0 {
-		res = yDiff1 < yDiff2
+	if x1 == 0 && x2 == 0 {
+		res = y1 < y2
 		fmt.Print("A-1 ", res)
 		return res
 	}
 
-	// on X axis
-	if yDiff1 == 0 && yDiff2 == 0 {
-		res = xDiff1 < xDiff2
+	if y1 == 0 && y2 == 0 {
+		res = x1 < x2
 		fmt.Print("A0 ", res)
 		return res
 	}
 
-	// if yDiff1 == 0 {
-	// 	if xDiff1 < 0 {
-	// 		res = true
-	// 		fmt.Print("A1 ", res)
-	// 		return res
-	// 	}
+	if y1 == 0 {
+		if x1 < 0 {
+			res = true
+			fmt.Print("A1 ", res)
+			return res
+		}
 
-	// 	if xDiff1 > 0 {
-	// 		res = yDiff2 > 0
-	// 		fmt.Print("A2 ", res)
-	// 		return res
-	// 	}
-	// }
+		if x1 > 0 {
+			res = y2 > 0
+			fmt.Print("A2 ", res)
+			return res
+		}
+	}
 
-	// if yDiff2 == 0 {
-	// 	if xDiff2 < 0 {
-	// 		res = false
-	// 		fmt.Print("A3 ", res)
-	// 		return res
-	// 	}
+	if y2 == 0 {
+		if x2 < 0 {
+			res = false
+			fmt.Print("A3 ", res)
+			return res
+		}
 
-	// 	if xDiff2 > 0 {
-	// 		res = yDiff1 < 0
-	// 		fmt.Print("A32 ", res)
-	// 		return res
-	// 	}
-	// }
+		if x2 > 0 {
+			res = y1 < 0
+			fmt.Print("A32 ", res)
+			return res
+		}
+	}
 
-	// if xDiff1 == 0 {
-	// 	if yDiff1 < 0 {
-	// 		res = yDiff2 > 0
-	// 		fmt.Print("A4 ", res)
-	// 		return res
-	// 	}
+	if x1 == 0 {
+		if y1 < 0 {
+			res = x2 > 0
+			fmt.Print("A4 ", res)
+			return res
+		}
 
-	// 	if yDiff1 > 0 {
-	// 		res = yDiff2 < 0
-	// 		fmt.Print("A5 ", res)
-	// 		return res
-	// 	}
-	// }
+		if y1 > 0 {
+			res = x2 < 0
+			fmt.Print("A5 ", res)
+			return res
+		}
+	}
 
-	// if xDiff2 == 0 {
-	// 	if yDiff2 < 0 {
-	// 		res = yDiff1 < 0
-	// 		fmt.Print("A6 ", res)
-	// 		return res
-	// 	}
+	if x2 == 0 {
+		if y2 < 0 {
+			res = x1 < 0
+			fmt.Print("A6 ", res)
+			return res
+		}
 
-	// 	if yDiff2 > 0 {
-	// 		res = yDiff1 > 0
-	// 		fmt.Print("A6 ", res)
-	// 		return res
-	// 	}
-	// }
+		if y2 > 0 {
+			res = x1 > 0
+			fmt.Print("A6 ", res)
+			return res
+		}
+	}
 
 	// nothing can be zero anymore
 
 	// quadrants
 
-	q1 := Quadrant(Pos{X: xDiff1, Y: yDiff1})
-	q2 := Quadrant(Pos{X: xDiff2, Y: yDiff2})
+	q1 := Quadrant(Pos{X: x1, Y: y1})
+	q2 := Quadrant(Pos{X: x2, Y: y2})
 
 	if q1 != q2 {
 		res = q1 < q2
@@ -274,28 +296,30 @@ func CompareAngles(laserPos Pos, p1 Pos, p2 Pos) bool {
 	// same quadrant
 
 	if q1 == 1 {
-		res = float64(xDiff1)/float64(yDiff1) > float64(xDiff2)/float64(yDiff2)
+		res = float64(x1)/float64(y1) > float64(x2)/float64(y2)
 		fmt.Print("Q1 ", res)
 		return res
 	}
 
 	if q1 == 2 {
-		res = float64(xDiff1)/float64(yDiff1) > float64(xDiff2)/float64(yDiff2)
+		res = float64(x1)/float64(y1) > float64(x2)/float64(y2)
 		fmt.Print("Q2 ", res)
 		return res
 	}
 
 	if q1 == 3 {
-		res = float64(xDiff1)/float64(yDiff1) < float64(xDiff2)/float64(yDiff2)
+		res = float64(x1)/float64(y1) > float64(x2)/float64(y2)
 		fmt.Print("Q3 ", res)
 		return res
 	}
 
 	if q1 == 4 {
-		res = float64(xDiff1)/float64(yDiff1) < float64(xDiff2)/float64(yDiff2)
+		res = float64(x1)/float64(y1) < float64(x2)/float64(y2)
 		fmt.Print("Q4 ", res)
 		return res
 	}
+
+	fmt.Print("NO")
 
 	return true
 }
@@ -309,8 +333,8 @@ func SortByAngle(laserPos Pos, positions []Pos) []Pos {
 }
 
 func main() {
-	m := load("input2.txt")
-	laserPos := Pos{X: 1, Y: 1}
+	m := load("input.txt")
+	laserPos := Pos{X: 11, Y: 1}
 
 	m.Nuke(laserPos)
 	m.Display()
