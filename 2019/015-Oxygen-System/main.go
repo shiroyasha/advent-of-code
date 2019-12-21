@@ -255,7 +255,7 @@ func (p *Process) RunTilInterupt() error {
 
 		if p.inputPointer == len(p.input) {
 			// no input, program needs to complete
-			fmt.Printf("Waiting for input")
+			// fmt.Printf("Waiting for input")
 			return nil
 		}
 
@@ -516,11 +516,20 @@ func move(pos Pos, dir int) Pos {
 	panic("unknown direction")
 }
 
-func findOxygen(pos Pos, visits Visits, directions []int) int {
+const size = 50
+
+var m = [size][size]byte{}
+
+func mark(pos Pos, symbol byte) {
+	m[pos.Y+size/2][pos.X+size/2] = symbol
+}
+
+func findOxygen(pos Pos, visits Visits, directions []int) (int, Pos) {
 	// time.Sleep(1 * time.Second)
 
 	visits = append(visits, pos)
 	minDis := 100000000000000000
+	minPos := Pos{0, 0}
 
 	for i := 4; i >= 1; i-- {
 		newPos := move(pos, i)
@@ -532,30 +541,113 @@ func findOxygen(pos Pos, visits Visits, directions []int) int {
 		dis := 0
 		newDirections := append(directions, i)
 
-		log.Println(newDirections)
+		// log.Println(newDirections)
 
 		switch check(newDirections) {
 		case 0:
-			log.Println("wall")
+			mark(newPos, 0)
+
+			// log.Println("wall")
 			continue
 		case 1:
-			log.Println("empty")
-			dis = findOxygen(newPos, visits, newDirections)
-		case 2:
-			log.Println("oxygen")
-			dis = len(newDirections)
-		}
+			mark(newPos, 1)
 
-		if dis < minDis {
-			minDis = dis
+			// log.Println("empty")
+			dis, oxygenPos := findOxygen(newPos, visits, newDirections)
+
+			if dis < minDis {
+				minDis = dis
+				minPos = oxygenPos
+			}
+		case 2:
+			mark(newPos, 2)
+
+			// log.Println("oxygen")
+			dis = len(newDirections)
+
+			if dis < minDis {
+				minDis = dis
+				minPos = newPos
+			}
 		}
 	}
 
-	return minDis
+	return minDis, minPos
+}
+
+func isEmpty(pos Pos) bool {
+	return m[size/2+pos.Y][size/2+pos.X] == 1
+}
+
+func draw() {
+	for i := 0; i < size; i++ {
+		for j := 0; j < size; j++ {
+			switch m[i][j] {
+			case 0:
+				fmt.Print("#")
+			case 1:
+				fmt.Print(".")
+			case 2:
+				fmt.Print("O")
+			}
+		}
+
+		fmt.Println()
+	}
+
+}
+
+func fillWithOxygen(queue []Pos) int {
+	if len(queue) == 0 {
+		return 0
+	}
+
+	draw()
+
+	newQueue := []Pos{}
+
+	for _, pos := range queue {
+		for i := 1; i <= 4; i++ {
+			if p := move(pos, i); isEmpty(p) {
+				mark(p, 2)
+
+				newQueue = append(newQueue, p)
+			}
+		}
+	}
+
+	return 1 + fillWithOxygen(newQueue)
 }
 
 func main() {
-	dis := findOxygen(Pos{X: 0, Y: 0}, Visits{}, []int{})
+	// dis, pos := findOxygen(Pos{X: 0, Y: 0}, Visits{}, []int{})
 
-	log.Println(dis)
+	// log.Println(dis)
+	// log.Println(pos)
+
+	pos := Pos{X: 0, Y: 0}
+	for i := 0; i < size; i++ {
+		for j := 0; j < size; j++ {
+			m[i][j] = 0
+		}
+	}
+
+	mark(Pos{X: 0, Y: 0}, 2)
+
+	mark(Pos{X: -1, Y: -1}, 1)
+	mark(Pos{X: 0, Y: -1}, 1)
+	mark(Pos{X: 1, Y: -1}, 1)
+
+	mark(Pos{X: -1, Y: 0}, 1)
+	mark(Pos{X: 1, Y: 0}, 1)
+
+	mark(Pos{X: -1, Y: 1}, 1)
+	mark(Pos{X: 0, Y: 1}, 1)
+	mark(Pos{X: 1, Y: 1}, 1)
+
+	draw()
+
+	duration := fillWithOxygen([]Pos{pos})
+
+	log.Println(duration)
 }
