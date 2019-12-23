@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"sort"
 )
@@ -13,6 +14,9 @@ type Pos struct {
 	X int
 	Y int
 }
+
+var nukes = [][]int{}
+var nuked = 0
 
 func load(filename string) AsteroidMap {
 	m := [][]bool{}
@@ -29,30 +33,39 @@ func load(filename string) AsteroidMap {
 		}
 
 		row := []bool{}
+		nukeRow := []int{}
 
 		for i := 0; i < len(line); i++ {
+
 			if line[i] == '.' {
 				row = append(row, false)
+				nukeRow = append(nukeRow, -1)
 			}
 
 			if line[i] == '#' {
 				row = append(row, true)
+				nukeRow = append(nukeRow, -1)
 			}
 		}
 
 		m = append(m, row)
+		nukes = append(nukes, nukeRow)
 	}
 
 	return AsteroidMap(m)
 }
 
-func (m *AsteroidMap) Display() {
-	for _, row := range *m {
-		for _, c := range row {
+func (m *AsteroidMap) Display(pos Pos) {
+	for i, row := range *m {
+		for j, c := range row {
+			if i == pos.Y && j == pos.X {
+				fmt.Print("@")
+			}
+
 			if c {
-				fmt.Print("#")
-			} else {
 				fmt.Print(".")
+			} else {
+				fmt.Print(" ")
 			}
 		}
 
@@ -60,7 +73,45 @@ func (m *AsteroidMap) Display() {
 	}
 }
 
+func (m *AsteroidMap) Nukes(pos Pos) {
+	if len(*m) != len(nukes) {
+		panic("AAAA")
+	}
+
+	if len((*m)[0]) != len(nukes[0]) {
+		fmt.Println(len(nukes[0]))
+		panic(len((*m)[0]))
+	}
+	for j, row := range nukes {
+		for i, c := range row {
+			if j == pos.Y && i == pos.X {
+				fmt.Print(" % ")
+				continue
+			}
+
+			if c > 0 {
+				fmt.Printf("%3d", c)
+				continue
+			}
+
+			if (*m)[j][i] {
+				fmt.Printf("  x")
+			} else {
+				fmt.Printf("  .")
+			}
+
+			// fmt.Printf("   ")
+
+		}
+
+		fmt.Println()
+	}
+}
+
 func (m *AsteroidMap) Nuke(pos Pos) {
+	nukes[pos.Y][pos.X] = nuked
+	nuked++
+
 	(*m)[pos.Y][pos.X] = false
 }
 
@@ -152,176 +203,30 @@ func (m *AsteroidMap) ListVisible(p Pos) []Pos {
 	return result
 }
 
-func Quadrant(p Pos) int {
-	if p.X < 0 && p.Y < 0 {
-		return 1
-	}
-
-	if p.X > 0 && p.Y < 0 {
-		return 2
-	}
-
-	if p.X > 0 && p.Y > 0 {
-		return 3
-	}
-
-	if p.X < 0 && p.Y > 0 {
-		return 4
-	}
-
-	return 0
-}
-
 func CompareAngles(laserPos Pos, p1 Pos, p2 Pos) bool {
-	x1 := p1.X - laserPos.X
-	y1 := p1.Y - laserPos.Y
+	x1 := laserPos.X - p1.X
+	y1 := laserPos.Y - p1.Y
 
-	x2 := p2.X - laserPos.X
-	y2 := p2.Y - laserPos.Y
+	x2 := laserPos.X - p2.X
+	y2 := laserPos.Y - p2.Y
 
-	// fmt.Printf("%v %v =>   (%5d %5d)   (%5d %5d)    =>   ", p1, p2, x1, y1, x2, y2)
-	fmt.Printf("%v %v\n", p1, p2)
-
-	for i := 0; i < 10; i++ {
-		for j := 0; j < 10; j++ {
-			if i == p1.Y && j == p1.X {
-				fmt.Printf("1")
-				continue
-			}
-
-			if i == p2.Y && j == p2.X {
-				fmt.Printf("2")
-				continue
-			}
-
-			if i == 1 && j == 1 {
-				fmt.Printf("@")
-				continue
-			}
-
-			fmt.Print(".")
-		}
-		fmt.Println()
-	}
-	fmt.Println()
-
-	defer func() {
-		fmt.Println()
-	}()
-
-	res := false
-
-	if x1 == 0 && x2 == 0 {
-		res = y1 < y2
-		fmt.Print("A-1 ", res)
-		return res
-	}
-
-	if y1 == 0 && y2 == 0 {
-		res = x1 < x2
-		fmt.Print("A0 ", res)
-		return res
-	}
-
-	if y1 == 0 {
-		if x1 < 0 {
-			res = true
-			fmt.Print("A1 ", res)
-			return res
-		}
-
-		if x1 > 0 {
-			res = y2 > 0
-			fmt.Print("A2 ", res)
-			return res
-		}
-	}
-
-	if y2 == 0 {
-		if x2 < 0 {
-			res = false
-			fmt.Print("A3 ", res)
-			return res
-		}
-
-		if x2 > 0 {
-			res = y1 < 0
-			fmt.Print("A32 ", res)
-			return res
-		}
-	}
-
-	if x1 == 0 {
-		if y1 < 0 {
-			res = x2 > 0
-			fmt.Print("A4 ", res)
-			return res
-		}
-
-		if y1 > 0 {
-			res = x2 < 0
-			fmt.Print("A5 ", res)
-			return res
-		}
+	if x1 == 0 && y1 > 0 {
+		return true
 	}
 
 	if x2 == 0 {
-		if y2 < 0 {
-			res = x1 < 0
-			fmt.Print("A6 ", res)
-			return res
-		}
-
-		if y2 > 0 {
-			res = x1 > 0
-			fmt.Print("A6 ", res)
-			return res
-		}
+		return !CompareAngles(laserPos, p2, p1)
 	}
 
-	// nothing can be zero anymore
-
-	// quadrants
-
-	q1 := Quadrant(Pos{X: x1, Y: y1})
-	q2 := Quadrant(Pos{X: x2, Y: y2})
-
-	if q1 != q2 {
-		res = q1 < q2
-
-		fmt.Printf("Q0 %d %d %t", q1, q2, res)
-		return res
+	if x1 > 0 && x2 > 0 {
+		return math.Atan(float64(y1)/float64(x1)) < math.Atan(float64(y2)/float64(x2))
 	}
 
-	// same quadrant
-
-	if q1 == 1 {
-		res = float64(x1)/float64(y1) > float64(x2)/float64(y2)
-		fmt.Print("Q1 ", res)
-		return res
+	if x1 < 0 && x2 < 0 {
+		return math.Atan(float64(y1)/float64(x1)) < math.Atan(float64(y2)/float64(x2))
 	}
 
-	if q1 == 2 {
-		res = float64(x1)/float64(y1) > float64(x2)/float64(y2)
-		fmt.Print("Q2 ", res)
-		return res
-	}
-
-	if q1 == 3 {
-		res = float64(x1)/float64(y1) > float64(x2)/float64(y2)
-		fmt.Print("Q3 ", res)
-		return res
-	}
-
-	if q1 == 4 {
-		res = float64(x1)/float64(y1) < float64(x2)/float64(y2)
-		fmt.Print("Q4 ", res)
-		return res
-	}
-
-	fmt.Print("NO")
-
-	return true
+	return x1 < x2
 }
 
 func SortByAngle(laserPos Pos, positions []Pos) []Pos {
@@ -334,10 +239,6 @@ func SortByAngle(laserPos Pos, positions []Pos) []Pos {
 
 func main() {
 	m := load("input.txt")
-	laserPos := Pos{X: 11, Y: 1}
-
-	m.Nuke(laserPos)
-	m.Display()
 
 	result := map[Pos]int{}
 
@@ -356,6 +257,7 @@ func main() {
 	})
 
 	max := 0
+	p := Pos{}
 
 	for k, v := range result {
 		fmt.Print(k)
@@ -363,6 +265,7 @@ func main() {
 
 		if v > max {
 			max = v
+			p = k
 		}
 	}
 
@@ -370,6 +273,9 @@ func main() {
 	fmt.Println("-------------------------")
 
 	// Part 2
+
+	laserPos := p
+	m.Nuke(laserPos)
 
 	nukeOrder := []Pos{}
 
@@ -385,6 +291,22 @@ func main() {
 
 		for _, n := range nukeOrder {
 			m.Nuke(n)
+
+			// cmd := exec.Command("clear")
+			// cmd.Stdout = os.Stdout
+			// cmd.Run()
+
+			// m.Nukes(laserPos)
+
+			// time.Sleep(50 * time.Millisecond)
+
+			if nuked > 200 {
+				break
+			}
+		}
+
+		if nuked > 200 {
+			break
 		}
 	}
 
@@ -392,4 +314,6 @@ func main() {
 	fmt.Println(nukeOrder)
 	fmt.Println(nukeOrder[199])
 	fmt.Println(nukeOrder[199].X*100 + nukeOrder[199].Y)
+
+	m.Nukes(laserPos)
 }
