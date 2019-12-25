@@ -147,6 +147,10 @@ var steps = []Vec{}
 var keys = map[byte]bool{}
 
 func solve(pos Vec, visits map[Vec]bool) {
+	if minSet == true && len(minRes) < len(steps)-1 {
+		return
+	}
+
 	if allKeysFound(keys) {
 		if minSet == false || len(minRes) > len(steps)-1 {
 			fmt.Println("found ", len(steps))
