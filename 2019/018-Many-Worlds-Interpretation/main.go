@@ -13,6 +13,7 @@ type Vec struct {
 }
 
 var m [][]byte
+var doorPositions = map[byte]Vec{}
 
 func load(filename string) {
 	inputFile, _ := os.OpenFile(filename, os.O_RDONLY, os.ModePerm)
@@ -26,26 +27,40 @@ func load(filename string) {
 
 		m = append(m, line)
 	}
+
+	for i := 0; i < len(m); i++ {
+		for j := 0; j < len(m[i]); j++ {
+			if isDoor(m[i][j]) {
+				doorPositions[m[i][j]] = Vec{X: j, Y: i}
+			}
+		}
+	}
+
+	keys = findKeys()
 }
 
 func show(pos Vec) {
-	time.Sleep(200 * time.Millisecond)
+	res := ""
+
+	for i, line := range m {
+		for j, c := range line {
+			if pos.X == j && pos.Y == i {
+				res += fmt.Sprintf("\033[31m%s\033[0m", string('@'))
+			} else {
+				res += fmt.Sprint(string(c))
+			}
+		}
+
+		res += "\n"
+	}
+
+	time.Sleep(10 * time.Millisecond)
 
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
 
-	for i, line := range m {
-		for j, c := range line {
-			if pos.X == j && pos.Y == i {
-				fmt.Printf("\033[31m%s\033[0m", string('@'))
-			} else {
-				fmt.Print(string(c))
-			}
-		}
-
-		fmt.Println()
-	}
+	fmt.Println(res)
 }
 
 func findPosition() Vec {
@@ -102,8 +117,8 @@ func isKey(v byte) bool {
 	return v >= 'a' && v <= 'z'
 }
 
-func keyForDoor(v byte) byte {
-	return v + ('a' - 'A')
+func doorForKey(v byte) byte {
+	return (v - 'a') + 'A'
 }
 
 func set(pos Vec, v byte) {
@@ -126,84 +141,80 @@ func right(pos Vec) Vec {
 	return Vec{X: pos.X + 1, Y: pos.Y}
 }
 
-func dup(k map[byte]bool) map[byte]bool {
-	newMap := make(map[byte]bool)
+var minRes = []Vec{}
+var minSet = false
+var steps = []Vec{}
+var keys = map[byte]bool{}
 
-	for key, value := range k {
-		newMap[key] = value
-	}
-
-	return newMap
-}
-
-func solve(pos Vec, keys map[byte]bool, visits map[Vec]bool) ([]Vec, bool) {
+func solve(pos Vec, visits map[Vec]bool) {
 	if allKeysFound(keys) {
-		return []Vec{}, true
-	}
-
-	v := get(pos)
-
-	if v == '#' {
-		return []Vec{}, false
+		if minSet == false || len(minRes) > len(steps)-1 {
+			fmt.Println("found ", len(steps))
+			minRes = append([]Vec{}, steps[0:len(steps)-1]...)
+			minSet = true
+		}
+		return
 	}
 
 	// show(pos)
-	// fmt.Println(visits)
+	// for k, v := range keys {
+	// 	if v {
+	// 		fmt.Print(string(k), " ")
+	// 	}
+	// }
 
-	if isDoor(v) {
-		keyNeeded := keyForDoor(v)
+	v := get(pos)
 
-		if v, ok := keys[keyNeeded]; ok && v == true {
-			set(pos, '.')
-			visits = map[Vec]bool{pos: true}
-		} else {
-			return []Vec{}, false
-		}
+	if v == '#' || isDoor(v) {
+		return
 	}
 
 	if isKey(v) {
-		keys = dup(keys)
-		keys[v] = true
 		set(pos, '.')
+		keys[v] = true
 
-		visits = map[Vec]bool{pos: true}
+		door := doorForKey(v)
+
+		unlockPos, ok := doorPositions[door]
+		if ok {
+			set(unlockPos, '.')
+		}
+
+		defer func() {
+			if ok {
+				set(unlockPos, door)
+			}
+		}()
+		defer func() { keys[v] = false }()
+
+		visits = map[Vec]bool{}
 	}
 
 	if get(pos) != '.' {
 		panic("how did we end up here. PANIC!!! " + string(get(pos)))
 	}
 
-	minOk := false
-	minRest := []Vec{Vec{-1, -1}}
 	visits[pos] = true
 
 	for _, p := range []Vec{up(pos), down(pos), left(pos), right(pos)} {
-		if visits[p] {
+		if visits[p] || get(p) == '#' || isDoor(get(p)) {
 			continue
 		}
 
-		rest, ok := solve(p, keys, visits)
+		old := get(p)
+		steps = append(steps, p)
 
-		if ok {
-			if minOk == false {
-				minRest = rest
-				minOk = true
-			} else {
-				if len(minRest) > len(rest) {
-					minRest = rest
-				}
-			}
-		}
+		solve(p, visits)
+
+		steps = steps[0 : len(steps)-1]
+		set(p, old)
 	}
-
-	return append([]Vec{pos}, minRest...), minOk
 }
 
 func main() {
-	load("input2.txt")
+	load("input4.txt")
 
 	pos := findPosition()
-	keys := findKeys()
 
 	fmt.Println(pos)
 
@@ -212,19 +223,25 @@ func main() {
 
 	set(pos, '.')
 
-	steps, _ := solve(pos, keys, map[Vec]bool{pos: true})
+	solve(pos, map[Vec]bool{})
 
-	fmt.Println(steps)
-	fmt.Println(len(steps) - 1)
+	fmt.Println(minRes)
+	fmt.Println(len(minRes))
 
-	m = [][]byte{}
+	// m = [][]byte{}
 
-	load("input2.txt")
+	// load("input2.txt")
 
-	for _, s := range steps {
-		set(s, '.')
-		show(s)
-	}
+	// for _, s := range shortest {
+	// 	set(s, '.')
+	// 	show(s)
 
-	fmt.Println(len(steps) - 1)
+	// 	if isKey(get(s)) {
+	// 		unlock(get(s))
+	// 	}
+	// }
+
+	// fmt.Println(pos)
+	// fmt.Println(shortest)
+	// fmt.Println(len(shortest))
 }
