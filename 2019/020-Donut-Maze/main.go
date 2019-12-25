@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
-	"time"
 )
 
 type Vec struct {
@@ -70,12 +68,18 @@ func load(filename string) {
 	reader := bufio.NewReader(inputFile)
 
 	for {
-		line, _, err := reader.ReadLine()
+		line, err := reader.ReadString('\n')
 		if err != nil {
 			break // EOF
 		}
 
-		m = append(m, line)
+		bytes := []byte{}
+
+		for _, c := range line[0 : len(line)-1] {
+			bytes = append(bytes, byte(c))
+		}
+
+		m = append(m, bytes)
 	}
 
 	for i, line := range m {
@@ -145,11 +149,11 @@ func show(pos Vec) {
 		res += "\n"
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	// time.Sleep(500 * time.Millisecond)
 
-	cmd := exec.Command("clear")
-	cmd.Stdout = os.Stdout
-	cmd.Run()
+	// cmd := exec.Command("clear")
+	// cmd.Stdout = os.Stdout
+	// cmd.Run()
 
 	fmt.Println(res)
 }
@@ -159,7 +163,7 @@ var visited = map[Vec]bool{}
 func solve(pos Vec, steps int) (int, bool) {
 	fmt.Println(pos)
 
-	show(pos)
+	// show(pos)
 
 	visited[pos] = true
 
@@ -167,13 +171,12 @@ func solve(pos Vec, steps int) (int, bool) {
 	min := 1000000001
 
 	for _, nextPos := range []Vec{up(pos), down(pos), left(pos), right(pos)} {
-		if at(nextPos) == 'Z' {
-			return steps, true
-		}
-
 		if isPortal(nextPos) {
 			n1 := nextPos
-			n2 := Vec{X: nextPos.X + nextPos.X - pos.X, Y: nextPos.Y + nextPos.Y - pos.Y}
+			n2 := Vec{
+				X: nextPos.X + nextPos.X - pos.X,
+				Y: nextPos.Y + nextPos.Y - pos.Y,
+			}
 
 			name := ""
 
@@ -194,6 +197,7 @@ func solve(pos Vec, steps int) (int, bool) {
 			}
 
 			fmt.Println(n1, n2)
+			fmt.Println(string(at(n1)), string(at(n2)))
 			fmt.Println(name)
 			fmt.Println(portals[name])
 
@@ -201,6 +205,11 @@ func solve(pos Vec, steps int) (int, bool) {
 				continue
 			}
 
+			if name == "ZZ" {
+				minOk = true
+				min = steps
+				continue
+			}
 			if portals[name].warpPositions[0] == pos {
 				nextPos = portals[name].warpPositions[1]
 			}
@@ -229,10 +238,10 @@ func solve(pos Vec, steps int) (int, bool) {
 }
 
 func main() {
-	load("input2.txt")
+	load("input3.txt")
 
 	pos := portals["AA"].warpPositions[0]
-	show(pos)
+	show(Vec{X: 0, Y: 0})
 
 	fmt.Println(pos)
 
