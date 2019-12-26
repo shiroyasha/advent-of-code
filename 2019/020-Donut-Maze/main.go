@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
+	"time"
 )
 
 type Vec struct {
@@ -27,10 +29,13 @@ func right(pos Vec) Vec {
 }
 
 var m [][]byte
+var layer = 0
 
 type Portal struct {
-	name          string
-	warpPositions []Vec
+	innerPos  Vec
+	warpInner Vec
+	outerPos  Vec
+	warpOuter Vec
 }
 
 func is(pos Vec, v byte) bool {
@@ -123,8 +128,16 @@ func load(filename string) {
 					warpPos = pLeft
 				}
 
+				inner := pos.X > 3 && pos.X <= len(line) && pos.Y >= 3 && pos.Y <= len(m)
+
 				portal := portals[name]
-				portal.warpPositions = append(portal.warpPositions, warpPos)
+				if inner {
+					portal.innerPos = pos
+					portal.warpInner = warpPos
+				} else {
+					portal.outerPos = pos
+					portal.warpOuter = warpPos
+				}
 
 				portals[name] = portal
 			}
@@ -142,30 +155,43 @@ func show(pos Vec) {
 			if j == pos.X && i == pos.Y {
 				res += fmt.Sprint("\033[31m@\033[0m")
 			} else {
-				res += fmt.Sprint(string(c))
+				found := false
+				for depth := len(visited) - 1; depth >= 0; depth-- {
+					if visited[depth][Vec{X: j, Y: i}] {
+						res += fmt.Sprintf("\033[4%dm%s\033[0m", depth+1, string(c))
+						found = true
+						break
+					}
+				}
+				if !found {
+					res += fmt.Sprint(string(c))
+				}
 			}
 		}
 
 		res += "\n"
 	}
 
-	// time.Sleep(500 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
-	// cmd := exec.Command("clear")
-	// cmd.Stdout = os.Stdout
-	// cmd.Run()
+	cmd := exec.Command("clear")
+	cmd.Stdout = os.Stdout
+	cmd.Run()
 
 	fmt.Println(res)
+	fmt.Println("layer", layer)
 }
 
-var visited = map[Vec]bool{}
+var visited = []map[Vec]bool{}
 
 func solve(pos Vec, steps int) (int, bool) {
-	fmt.Println(pos)
+	if len(visited) <= layer {
+		visited = append(visited, map[Vec]bool{})
+	}
 
-	// show(pos)
+	show(pos)
 
-	visited[pos] = true
+	visited[layer][pos] = true
 
 	minOk := false
 	min := 1000000001
@@ -210,16 +236,27 @@ func solve(pos Vec, steps int) (int, bool) {
 				min = steps
 				continue
 			}
-			if portals[name].warpPositions[0] == pos {
-				nextPos = portals[name].warpPositions[1]
+			if portals[name].warpInner == pos {
+				layer += 1
+				if len(visited) <= layer {
+					visited = append(visited, map[Vec]bool{})
+				}
+
+				nextPos = portals[name].warpOuter
+
+				visited[layer-1][portals[name].outerPos] = true
+				visited[layer][portals[name].outerPos] = true
 			}
 
-			if portals[name].warpPositions[1] == pos {
-				nextPos = portals[name].warpPositions[0]
+			if layer > 0 && !visited[layer][pos] && portals[name].warpOuter == pos {
+				layer -= 1
+				nextPos = portals[name].warpInner
 			}
 		}
 
-		if visited[nextPos] || at(nextPos) == ' ' || at(nextPos) == '#' {
+		fmt.Println(layer)
+
+		if visited[layer][nextPos] || at(nextPos) == ' ' || at(nextPos) == '#' {
 			continue
 		}
 
@@ -232,18 +269,20 @@ func solve(pos Vec, steps int) (int, bool) {
 		}
 	}
 
-	visited[pos] = false
+	visited[layer][pos] = false
 
 	return min, minOk
 }
 
 func main() {
-	load("input3.txt")
+	load("input4.txt")
 
-	pos := portals["AA"].warpPositions[0]
-	show(Vec{X: 0, Y: 0})
+	pos := portals["AA"].warpInner
 
 	fmt.Println(pos)
+	for k, p := range portals {
+		fmt.Printf("%s %+v\n", k, p)
+	}
 
 	steps, ok := solve(pos, 0)
 
