@@ -12,6 +12,11 @@ type Vec struct {
 	X, Y int
 }
 
+type Location struct {
+	Pos   Vec
+	Layer int
+}
+
 func up(pos Vec) Vec {
 	return Vec{X: pos.X, Y: pos.Y - 1}
 }
@@ -29,7 +34,6 @@ func right(pos Vec) Vec {
 }
 
 var m [][]byte
-var layer = 0
 
 type Portal struct {
 	innerPos  Vec
@@ -51,7 +55,6 @@ func is(pos Vec, v byte) bool {
 }
 
 func at(pos Vec) byte {
-	fmt.Println(pos)
 	return m[pos.Y][pos.X]
 }
 
@@ -148,122 +151,119 @@ func load(filename string) {
 	fmt.Println(portals)
 }
 
-func show(pos Vec) {
+func show(loc Location) {
 	res := ""
 
 	for i, line := range m {
 		for j, c := range line {
-			if j == pos.X && i == pos.Y {
+			if j == loc.Pos.X && i == loc.Pos.Y {
 				res += fmt.Sprint("\033[31m@\033[0m")
 			} else {
-				found := false
-				for depth := len(visited) - 1; depth >= 0; depth-- {
-					if visited[depth][Vec{X: j, Y: i}] {
-						res += fmt.Sprintf("\033[4%dm%s\033[0m", depth+1, string(c))
-						found = true
-						break
-					}
-				}
-				if !found {
-					res += fmt.Sprint(string(c))
-				}
+				// found := false
+				// for depth := len(visited) - 1; depth >= 0; depth-- {
+				// 	if visited[Vec{X: j, Y: i}] {
+				// 		res += fmt.Sprintf("\033[4%dm%s\033[0m", depth+1, string(c))
+				// 		found = true
+				// 		break
+				// 	}
+				// }
+				// if !found {
+				res += fmt.Sprint(string(c))
+				// }
 			}
 		}
 
 		res += "\n"
 	}
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
 
 	fmt.Println(res)
-	fmt.Println("layer", layer)
 }
 
-var visited = []map[Vec]bool{}
+var visited = map[Location]bool{}
 
-func solve(pos Vec, steps int) (int, bool) {
-	if len(visited) <= layer {
-		visited = append(visited, map[Vec]bool{})
+func loadPortalName(currentPos, nextPos Vec) string {
+	n1 := nextPos
+	n2 := Vec{
+		X: nextPos.X + nextPos.X - currentPos.X,
+		Y: nextPos.Y + nextPos.Y - currentPos.Y,
 	}
 
-	show(pos)
+	name := ""
 
-	visited[layer][pos] = true
+	if n1.X == n2.X {
+		if n1.Y < n2.Y {
+			name = string(at(n1)) + string(at(n2))
+		} else {
+			name = string(at(n2)) + string(at(n1))
+		}
+	}
+
+	if n1.Y == n2.Y {
+		if n1.X < n2.X {
+			name = string(at(n1)) + string(at(n2))
+		} else {
+			name = string(at(n2)) + string(at(n1))
+		}
+	}
+
+	return name
+}
+
+func resolveNextLoc(current Location, nextPos Vec) (Location, bool) {
+	if isPortal(nextPos) {
+		name := loadPortalName(current.Pos, nextPos)
+
+		if name == "ZZ" {
+			return current, true
+		}
+
+		portal := portals[name]
+
+		if portal.warpInner == nextPos {
+			return Location{
+				Layer: current.Layer + 1,
+				Pos:   portal.warpOuter,
+			}, false
+		}
+
+		if portal.warpOuter == nextPos {
+			return Location{
+				Layer: current.Layer - 1,
+				Pos:   portal.warpInner,
+			}, false
+		}
+	}
+
+	return Location{Pos: nextPos, Layer: current.Layer}, false
+}
+
+func solve(loc Location, steps int) (int, bool) {
+	show(loc)
+
+	visited[loc] = true
 
 	minOk := false
 	min := 1000000001
 
-	for _, nextPos := range []Vec{up(pos), down(pos), left(pos), right(pos)} {
-		if isPortal(nextPos) {
-			n1 := nextPos
-			n2 := Vec{
-				X: nextPos.X + nextPos.X - pos.X,
-				Y: nextPos.Y + nextPos.Y - pos.Y,
-			}
+	for _, nextPos := range []Vec{up(loc.Pos), down(loc.Pos), left(loc.Pos), right(loc.Pos)} {
+		nextLoc, isDestination := resolveNextLoc(loc, nextPos)
 
-			fmt.Println(pos, n1, n2)
-
-			name := ""
-
-			if n1.X == n2.X {
-				if n1.Y < n2.Y {
-					name = string(at(n1)) + string(at(n2))
-				} else {
-					name = string(at(n2)) + string(at(n1))
-				}
-			}
-
-			if n1.Y == n2.Y {
-				if n1.X < n2.X {
-					name = string(at(n1)) + string(at(n2))
-				} else {
-					name = string(at(n2)) + string(at(n1))
-				}
-			}
-
-			fmt.Println(n1, n2)
-			fmt.Println(string(at(n1)), string(at(n2)))
-			fmt.Println(name)
-			fmt.Println(portals[name])
-
-			if name == "AA" {
-				continue
-			}
-
-			if name == "ZZ" {
-				minOk = true
-				min = steps
-				continue
-			}
-			if portals[name].warpInner == pos {
-				layer += 1
-				if len(visited) <= layer {
-					visited = append(visited, map[Vec]bool{})
-				}
-
-				nextPos = portals[name].warpOuter
-
-				visited[layer-1][portals[name].outerPos] = true
-				visited[layer][portals[name].outerPos] = true
-			}
-
-			if layer > 0 && !visited[layer][nextPos] && portals[name].warpOuter == pos {
-				layer -= 1
-				nextPos = portals[name].warpInner
-			}
+		if isDestination {
+			minOk = true
+			min = steps
 		}
 
-		fmt.Println(layer)
-
-		if visited[layer][nextPos] || at(nextPos) == ' ' || at(nextPos) == '#' {
+		if visited[nextLoc] || at(nextLoc.Pos) == ' ' || at(nextLoc.Pos) == '#' {
 			continue
 		}
 
-		steps, ok := solve(nextPos, steps+1)
+		steps, ok := solve(nextLoc, steps+1)
 		if ok {
 			if steps < min {
 				min = steps
@@ -272,7 +272,7 @@ func solve(pos Vec, steps int) (int, bool) {
 		}
 	}
 
-	visited[layer][pos] = false
+	visited[loc] = false
 
 	return min, minOk
 }
@@ -281,13 +281,14 @@ func main() {
 	load("input4.txt")
 
 	pos := portals["AA"].warpOuter
+	loc := Location{Pos: pos, Layer: 0}
 
 	fmt.Println(pos)
 	for k, p := range portals {
 		fmt.Printf("%s %+v\n", k, p)
 	}
 
-	steps, ok := solve(pos, 0)
+	steps, ok := solve(loc, 0)
 
 	fmt.Println(steps, ok)
 }
