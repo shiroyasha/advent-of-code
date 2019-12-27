@@ -51,6 +51,7 @@ func is(pos Vec, v byte) bool {
 }
 
 func at(pos Vec) byte {
+	fmt.Println(pos)
 	return m[pos.Y][pos.X]
 }
 
@@ -128,7 +129,7 @@ func load(filename string) {
 					warpPos = pLeft
 				}
 
-				inner := pos.X > 3 && pos.X <= len(line) && pos.Y >= 3 && pos.Y <= len(m)
+				inner := pos.X > 3 && pos.X <= len(line)-3 && pos.Y >= 3 && pos.Y <= len(m)-3
 
 				portal := portals[name]
 				if inner {
@@ -172,7 +173,7 @@ func show(pos Vec) {
 		res += "\n"
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
@@ -203,6 +204,8 @@ func solve(pos Vec, steps int) (int, bool) {
 				X: nextPos.X + nextPos.X - pos.X,
 				Y: nextPos.Y + nextPos.Y - pos.Y,
 			}
+
+			fmt.Println(pos, n1, n2)
 
 			name := ""
 
@@ -248,7 +251,7 @@ func solve(pos Vec, steps int) (int, bool) {
 				visited[layer][portals[name].outerPos] = true
 			}
 
-			if layer > 0 && !visited[layer][pos] && portals[name].warpOuter == pos {
+			if layer > 0 && !visited[layer][nextPos] && portals[name].warpOuter == pos {
 				layer -= 1
 				nextPos = portals[name].warpInner
 			}
@@ -277,7 +280,7 @@ func solve(pos Vec, steps int) (int, bool) {
 func main() {
 	load("input4.txt")
 
-	pos := portals["AA"].warpInner
+	pos := portals["AA"].warpOuter
 
 	fmt.Println(pos)
 	for k, p := range portals {
