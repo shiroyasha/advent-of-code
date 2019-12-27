@@ -159,30 +159,31 @@ func show(loc Location) {
 			if j == loc.Pos.X && i == loc.Pos.Y {
 				res += fmt.Sprint("\033[31m@\033[0m")
 			} else {
-				// found := false
-				// for depth := len(visited) - 1; depth >= 0; depth-- {
-				// 	if visited[Vec{X: j, Y: i}] {
-				// 		res += fmt.Sprintf("\033[4%dm%s\033[0m", depth+1, string(c))
-				// 		found = true
-				// 		break
-				// 	}
-				// }
-				// if !found {
-				res += fmt.Sprint(string(c))
-				// }
+				found := false
+				for depth := 50; depth >= 0; depth-- {
+					if visited[Location{Pos: Vec{X: j, Y: i}, Layer: depth}] {
+						res += fmt.Sprintf("\033[4%dm%s\033[0m", depth+1, string(c))
+						found = true
+						break
+					}
+				}
+				if !found {
+					res += fmt.Sprint(string(c))
+				}
 			}
 		}
 
 		res += "\n"
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
 
 	fmt.Println(res)
+	fmt.Println(loc)
 }
 
 var visited = map[Location]bool{}
@@ -219,20 +220,22 @@ func resolveNextLoc(current Location, nextPos Vec) (Location, bool) {
 	if isPortal(nextPos) {
 		name := loadPortalName(current.Pos, nextPos)
 
+		fmt.Println(name)
+
 		if name == "ZZ" {
 			return current, true
 		}
 
 		portal := portals[name]
 
-		if portal.warpInner == nextPos {
+		if portal.warpInner == current.Pos {
 			return Location{
 				Layer: current.Layer + 1,
 				Pos:   portal.warpOuter,
 			}, false
 		}
 
-		if portal.warpOuter == nextPos {
+		if portal.warpOuter == current.Pos {
 			return Location{
 				Layer: current.Layer - 1,
 				Pos:   portal.warpInner,
@@ -254,12 +257,13 @@ func solve(loc Location, steps int) (int, bool) {
 	for _, nextPos := range []Vec{up(loc.Pos), down(loc.Pos), left(loc.Pos), right(loc.Pos)} {
 		nextLoc, isDestination := resolveNextLoc(loc, nextPos)
 
+		if visited[nextLoc] || at(nextLoc.Pos) == ' ' || at(nextLoc.Pos) == '#' {
+			continue
+		}
+
 		if isDestination {
 			minOk = true
 			min = steps
-		}
-
-		if visited[nextLoc] || at(nextLoc.Pos) == ' ' || at(nextLoc.Pos) == '#' {
 			continue
 		}
 
