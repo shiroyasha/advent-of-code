@@ -176,7 +176,7 @@ func show(loc Location) {
 		res += "\n"
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
@@ -216,34 +216,46 @@ func loadPortalName(currentPos, nextPos Vec) string {
 	return name
 }
 
-func resolveNextLoc(current Location, nextPos Vec) (Location, bool) {
+func resolveNextLoc(current Location, nextPos Vec) (Location, bool, bool) {
+	if at(nextPos) == '#' || at(nextPos) == ' ' {
+		return current, false, false
+	}
+
 	if isPortal(nextPos) {
 		name := loadPortalName(current.Pos, nextPos)
 
 		fmt.Println(name)
 
+		if name == "AA" {
+			return current, false, false
+		}
+
 		if name == "ZZ" {
-			return current, true
+			return current, true, true
 		}
 
 		portal := portals[name]
+
+		if portal.warpOuter == current.Pos && current.Layer == 0 {
+			return current, false, false
+		}
 
 		if portal.warpInner == current.Pos {
 			return Location{
 				Layer: current.Layer + 1,
 				Pos:   portal.warpOuter,
-			}, false
+			}, true, false
 		}
 
 		if portal.warpOuter == current.Pos {
 			return Location{
 				Layer: current.Layer - 1,
 				Pos:   portal.warpInner,
-			}, false
+			}, true, false
 		}
 	}
 
-	return Location{Pos: nextPos, Layer: current.Layer}, false
+	return Location{Pos: nextPos, Layer: current.Layer}, true, false
 }
 
 func solve(loc Location, steps int) (int, bool) {
@@ -255,9 +267,9 @@ func solve(loc Location, steps int) (int, bool) {
 	min := 1000000001
 
 	for _, nextPos := range []Vec{up(loc.Pos), down(loc.Pos), left(loc.Pos), right(loc.Pos)} {
-		nextLoc, isDestination := resolveNextLoc(loc, nextPos)
+		nextLoc, isResolved, isDestination := resolveNextLoc(loc, nextPos)
 
-		if visited[nextLoc] || at(nextLoc.Pos) == ' ' || at(nextLoc.Pos) == '#' {
+		if visited[nextLoc] || !isResolved {
 			continue
 		}
 
