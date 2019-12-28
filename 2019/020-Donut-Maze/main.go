@@ -221,6 +221,10 @@ func resolveNextLoc(current Location, nextPos Vec) (Location, bool, bool) {
 		return current, false, false
 	}
 
+	if at(nextPos) == 'Z' && nextPos.X < 4 && current.Layer == 0 {
+		os.Exit(1)
+	}
+
 	if isPortal(nextPos) {
 		name := loadPortalName(current.Pos, nextPos)
 
@@ -270,8 +274,8 @@ func solve(steps int) int {
 	nextQueue := []Location{}
 
 	for _, loc := range queue {
-		show(loc)
-		fmt.Println(loc)
+		// show(loc)
+		fmt.Println(steps)
 
 		for _, nextPos := range []Vec{up(loc.Pos), down(loc.Pos), left(loc.Pos), right(loc.Pos)} {
 			nextLoc, isResolved, isDestination := resolveNextLoc(loc, nextPos)
@@ -306,7 +310,7 @@ func solve(steps int) int {
 }
 
 func main() {
-	load("input4.txt")
+	load("input3.txt")
 
 	pos := portals["AA"].warpOuter
 	loc := Location{Pos: pos, Layer: 0}
