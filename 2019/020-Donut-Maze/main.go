@@ -258,39 +258,48 @@ func resolveNextLoc(current Location, nextPos Vec) (Location, bool, bool) {
 	return Location{Pos: nextPos, Layer: current.Layer}, true, false
 }
 
-func solve(loc Location, steps int) (int, bool) {
-	show(loc)
+type QueueItem struct {
+	from Location
+	to   Vec
+}
 
-	visited[loc] = true
+var queue = []QueueItem{}
+var solutionFound = false
 
-	minOk := false
-	min := 1000000001
+func solve(steps int) int {
+	for _, item := range queue {
+		loc := item.from
+		show(loc)
 
-	for _, nextPos := range []Vec{up(loc.Pos), down(loc.Pos), left(loc.Pos), right(loc.Pos)} {
-		nextLoc, isResolved, isDestination := resolveNextLoc(loc, nextPos)
+		fmt.Println(item, string(at(item.from.Pos)))
 
-		if visited[nextLoc] || !isResolved {
-			continue
-		}
+		visited[loc] = true
 
-		if isDestination {
-			minOk = true
-			min = steps
-			continue
-		}
+		for _, nextPos := range []Vec{up(loc.Pos), down(loc.Pos), left(loc.Pos), right(loc.Pos)} {
+			queue = append(queue, QueueItem{from: loc, to: nextPos})
 
-		steps, ok := solve(nextLoc, steps+1)
-		if ok {
-			if steps < min {
-				min = steps
-				minOk = true
+			nextLoc, isResolved, isDestination := resolveNextLoc(loc, item.to)
+
+			if visited[nextLoc] || !isResolved {
+				continue
 			}
+
+			if isDestination {
+				solutionFound = true
+				break
+			}
+		}
+
+		if solutionFound {
+			break
 		}
 	}
 
-	visited[loc] = false
+	if !solutionFound {
+		return solve(steps + 1)
+	}
 
-	return min, minOk
+	return steps
 }
 
 func main() {
@@ -304,7 +313,8 @@ func main() {
 		fmt.Printf("%s %+v\n", k, p)
 	}
 
-	steps, ok := solve(loc, 0)
+	queue = append(queue, QueueItem{from: loc, to: up(loc.Pos)})
+	steps := solve(0)
 
-	fmt.Println(steps, ok)
+	fmt.Println(steps)
 }
