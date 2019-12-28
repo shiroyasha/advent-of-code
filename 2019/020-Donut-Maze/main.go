@@ -224,7 +224,7 @@ func resolveNextLoc(current Location, nextPos Vec) (Location, bool, bool) {
 	if isPortal(nextPos) {
 		name := loadPortalName(current.Pos, nextPos)
 
-		fmt.Println(name)
+		// fmt.Println(name)
 
 		if name == "AA" {
 			return current, false, false
@@ -263,22 +263,18 @@ type QueueItem struct {
 	to   Vec
 }
 
-var queue = []QueueItem{}
+var queue = []Location{}
 var solutionFound = false
 
 func solve(steps int) int {
-	for _, item := range queue {
-		loc := item.from
+	nextQueue := []Location{}
+
+	for _, loc := range queue {
 		show(loc)
-
-		fmt.Println(item, string(at(item.from.Pos)))
-
-		visited[loc] = true
+		fmt.Println(loc)
 
 		for _, nextPos := range []Vec{up(loc.Pos), down(loc.Pos), left(loc.Pos), right(loc.Pos)} {
-			queue = append(queue, QueueItem{from: loc, to: nextPos})
-
-			nextLoc, isResolved, isDestination := resolveNextLoc(loc, item.to)
+			nextLoc, isResolved, isDestination := resolveNextLoc(loc, nextPos)
 
 			if visited[nextLoc] || !isResolved {
 				continue
@@ -286,14 +282,21 @@ func solve(steps int) int {
 
 			if isDestination {
 				solutionFound = true
+				os.Exit(1)
 				break
 			}
+
+			visited[nextLoc] = true
+
+			nextQueue = append(nextQueue, nextLoc)
 		}
 
 		if solutionFound {
 			break
 		}
 	}
+
+	queue = nextQueue
 
 	if !solutionFound {
 		return solve(steps + 1)
@@ -313,7 +316,7 @@ func main() {
 		fmt.Printf("%s %+v\n", k, p)
 	}
 
-	queue = append(queue, QueueItem{from: loc, to: up(loc.Pos)})
+	queue = append(queue, loc)
 	steps := solve(0)
 
 	fmt.Println(steps)
