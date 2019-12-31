@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
-	"time"
 )
 
 type Vec struct {
@@ -20,12 +18,17 @@ func load(filename string) {
 	reader := bufio.NewReader(inputFile)
 
 	for {
-		line, _, err := reader.ReadLine()
+		line, err := reader.ReadString('\n')
 		if err != nil {
 			break // EOF
 		}
 
-		m = append(m, line)
+		r := []byte{}
+		for _, k := range line[0 : len(line)-1] {
+			r = append(r, byte(k))
+		}
+
+		m = append(m, r)
 	}
 
 	for i := 0; i < len(m); i++ {
@@ -39,13 +42,22 @@ func load(filename string) {
 	keys = findKeys()
 }
 
-func show(pos Vec) {
+func show(path []Vec) {
 	res := ""
 
 	for i, line := range m {
 		for j, c := range line {
-			if pos.X == j && pos.Y == i {
-				res += fmt.Sprintf("\033[31m%s\033[0m", string('@'))
+			found := false
+
+			for _, pos := range path {
+				if pos.X == j && pos.Y == i {
+					found = true
+					break
+				}
+			}
+
+			if found {
+				res += fmt.Sprintf("\033[41m%s\033[0m", string(c))
 			} else {
 				res += fmt.Sprint(string(c))
 			}
@@ -54,11 +66,11 @@ func show(pos Vec) {
 		res += "\n"
 	}
 
-	time.Sleep(10 * time.Millisecond)
+	// time.Sleep(1000 * time.Millisecond)
 
-	cmd := exec.Command("clear")
-	cmd.Stdout = os.Stdout
-	cmd.Run()
+	// cmd := exec.Command("clear")
+	// cmd.Stdout = os.Stdout
+	// cmd.Run()
 
 	fmt.Println(res)
 }
@@ -75,13 +87,17 @@ func findPosition() Vec {
 	panic("No entrance")
 }
 
-func findKeys() map[byte]bool {
-	res := map[byte]bool{}
+func at(p Vec) byte {
+	return m[p.Y][p.X]
+}
+
+func findKeys() map[byte]Vec {
+	res := map[byte]Vec{}
 
 	for i := 0; i < len(m); i++ {
 		for j := 0; j < len(m[i]); j++ {
 			if m[i][j] >= 'a' && m[i][j] <= 'z' {
-				res[m[i][j]] = false
+				res[m[i][j]] = Vec{X: j, Y: i}
 			}
 		}
 	}
@@ -141,96 +157,265 @@ func right(pos Vec) Vec {
 	return Vec{X: pos.X + 1, Y: pos.Y}
 }
 
-var minRes = []Vec{}
-var minSet = false
-var steps = []Vec{}
-var keys = map[byte]bool{}
+var keys = map[byte]Vec{}
 
-func solve(pos Vec, visits map[Vec]bool) {
-	if minSet == true && len(minRes) < len(steps)-1 {
-		return
-	}
-
-	if allKeysFound(keys) {
-		if minSet == false || len(minRes) > len(steps)-1 {
-			fmt.Println("found ", len(steps))
-			minRes = append([]Vec{}, steps[0:len(steps)-1]...)
-			minSet = true
+func isVisited(path []Vec, pos Vec) bool {
+	for _, p := range path {
+		if p == pos {
+			return true
 		}
-		return
 	}
 
-	// show(pos)
-	// for k, v := range keys {
-	// 	if v {
-	// 		fmt.Print(string(k), " ")
-	// 	}
-	// }
+	return false
+}
 
-	v := get(pos)
-
-	if v == '#' || isDoor(v) {
-		return
+func dfs(from Vec, goal Vec, path []Vec) ([]Vec, bool) {
+	if from == goal {
+		return path, true
 	}
 
-	if isKey(v) {
-		set(pos, '.')
-		keys[v] = true
+	minRes := []Vec{}
+	minFound := false
 
-		door := doorForKey(v)
-
-		unlockPos, ok := doorPositions[door]
-		if ok {
-			set(unlockPos, '.')
-		}
-
-		defer func() {
-			if ok {
-				set(unlockPos, door)
-			}
-		}()
-		defer func() { keys[v] = false }()
-
-		visits = map[Vec]bool{}
-	}
-
-	if get(pos) != '.' {
-		panic("how did we end up here. PANIC!!! " + string(get(pos)))
-	}
-
-	visits[pos] = true
-
-	for _, p := range []Vec{up(pos), down(pos), left(pos), right(pos)} {
-		if visits[p] || get(p) == '#' || isDoor(get(p)) {
+	for _, next := range []Vec{up(from), left(from), right(from), down(from)} {
+		if at(next) == '#' {
 			continue
 		}
 
-		old := get(p)
-		steps = append(steps, p)
+		if isVisited(path, next) {
+			continue
+		}
 
-		solve(p, visits)
+		newPath, ok := dfs(next, goal, append(path, next))
 
-		steps = steps[0 : len(steps)-1]
-		set(p, old)
+		if ok {
+			if !minFound || len(minRes) > len(newPath) {
+				minRes = newPath
+				minFound = true
+			}
+		}
+	}
+
+	return minRes, minFound
+}
+
+func filterDoors(path []Vec) []byte {
+	res := []byte{}
+
+	for _, p := range path {
+		if isDoor(at(p)) {
+			res = append(res, at(p))
+		}
+	}
+
+	return res
+}
+
+type Path struct {
+	steps  []Vec
+	length int
+	doors  []byte
+}
+
+var distances = [27][27]Path{}
+
+func showDistances() {
+	fmt.Print("     ")
+
+	for i := 0; i < 27; i++ {
+		if i == 0 {
+			fmt.Print("@   ")
+		} else {
+			fmt.Print(string(i+'a'-1) + "   ")
+		}
+	}
+
+	fmt.Println()
+
+	for i := 0; i < 27; i++ {
+		if i == 0 {
+			fmt.Print("@ ")
+		} else {
+			fmt.Print(string(i+'a'-1) + " ")
+		}
+
+		for j := 0; j < 27; j++ {
+			if i == j || distances[i][j].length == 0 {
+				fmt.Print("   -")
+				continue
+			}
+
+			fmt.Printf("%4d", distances[i][j].length)
+		}
+
+		fmt.Println()
 	}
 }
 
+func showDoors() {
+	fmt.Print("     ")
+
+	for i := 0; i < 27; i++ {
+		if i == 0 {
+			fmt.Print("@   ")
+		} else {
+			fmt.Print(string(i+'a'-1) + "   ")
+		}
+	}
+
+	fmt.Println()
+
+	for i := 0; i < 27; i++ {
+		if i == 0 {
+			fmt.Print("@ ")
+		} else {
+			fmt.Print(string(i+'a'-1) + " ")
+		}
+
+		for j := 0; j < 27; j++ {
+			if i == j || len(distances[i][j].doors) == 0 {
+				fmt.Print("   -")
+				continue
+			}
+
+			fmt.Printf("%4d", len(distances[i][j].doors))
+		}
+
+		fmt.Println()
+	}
+}
+
+func hasKeysForDoors(doors []byte, keys []byte) bool {
+	for _, d := range doors {
+		found := false
+
+		for _, k := range keys {
+
+			// fmt.Println(string(d), string(k), string(byte(k)-'a'+'A'))
+
+			if d == byte(k)-'a'+'A' {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
+}
+
+var queue = []byte{0}
+
+func solve(visited []byte, steps int) ([]byte, int, bool) {
+	// fmt.Println(keys)
+	if len(visited) == len(keys) {
+		return visited, steps, true
+	}
+
+	nextQueue := []byte{}
+
+	for _, k := range keys {
+		kk := k
+		if k > 0 {
+			kk = at(k) - byte('a') + 1
+		}
+
+		for _, k := range keys {
+			if kk == from {
+				continue
+			}
+
+			found := false
+			for _, v := range visited {
+				if v == at(k) {
+					found = true
+					break
+				}
+			}
+
+			if found {
+				continue
+			}
+
+			if hasKeysForDoors(path.doors, visited) {
+				nextQueue = append(nextQueue, kk)
+				res, steps, ok := solve(kk, append(visited, at(k)), steps+path.length)
+
+				if ok {
+					if !minFound || minSteps >= steps {
+						minSteps = steps
+						minRes = res
+						minFound = true
+					}
+				}
+			}
+
+		}
+
+	}
+
+	return minRes, minSteps, minFound
+}
+
 func main() {
-	load("input4.txt")
+	load("input5.txt")
 
 	pos := findPosition()
-
 	fmt.Println(pos)
 
-	// show(pos)
-	// showKeys(keys)
+	for k1, p1 := range keys {
+		path1, _ := dfs(pos, keys[k1], []Vec{pos})
 
-	set(pos, '.')
+		distances[0][k1-'a'+1] = Path{
+			steps:  path1,
+			length: len(path1) - 1,
+			doors:  filterDoors(path1),
+		}
 
-	solve(pos, map[Vec]bool{})
+		for k2, p2 := range keys {
+			if k1 == k2 {
+				continue
+			}
 
-	fmt.Println(minRes)
-	fmt.Println(len(minRes))
+			path2, ok := dfs(p1, p2, []Vec{p1})
+
+			if !ok {
+				fmt.Println(p1, p2)
+				fmt.Println("Path not found")
+				os.Exit(1)
+			}
+
+			distances[k1-'a'+1][k2-'a'+1] = Path{
+				steps:  path2,
+				length: len(path2) - 1,
+				doors:  filterDoors(path2),
+			}
+
+			// if !(path2[0] == p1 && path2[len(path2)-1] == p2) {
+			// 	fmt.Println(string(k1), string(k2))
+			// 	fmt.Println(path2)
+
+			// 	show(distances[k1-'a'+1][k2-'a'+1].steps)
+			// 	os.Exit(1)
+			// }
+		}
+	}
+
+	showDistances()
+	showDoors()
+
+	steps, l, _ := solve(0, []byte{}, 0)
+
+	for _, s := range steps {
+		fmt.Println(string(s))
+	}
+
+	fmt.Println(l)
+
+	show([]Vec{})
 
 	// m = [][]byte{}
 
