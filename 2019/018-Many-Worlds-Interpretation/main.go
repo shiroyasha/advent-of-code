@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"time"
 )
 
 type Vec struct {
@@ -18,6 +19,8 @@ type Map struct {
 
 	width  int
 	height int
+
+	robotPos Vec
 }
 
 func load(filename string) *Map {
@@ -51,8 +54,12 @@ func load(filename string) *Map {
 				result.doors[result.field[i][j]] = Vec{X: j, Y: i}
 			}
 
-			if (result.field[i][j] >= 'a' && result.field[i][j] <= 'z') || result.field[i][j] == '@' {
+			if result.field[i][j] >= 'a' && result.field[i][j] <= 'z' {
 				result.keys[result.field[i][j]] = Vec{X: j, Y: i}
+			}
+
+			if result.field[i][j] == '@' {
+				result.robotPos = Vec{X: j, Y: i}
 			}
 		}
 	}
@@ -60,12 +67,18 @@ func load(filename string) *Map {
 	return result
 }
 
-func (m *Map) show() {
+func (m *Map) show(s State) {
 	res := ""
 
-	for _, line := range m.field {
-		for _, c := range line {
-			res += fmt.Sprint(string(c))
+	for i, line := range m.field {
+		for j, c := range line {
+			pos := Vec{X: j, Y: i}
+
+			if s.pos == pos {
+				res += fmt.Sprintf("\033[41m%s\033[0m", string(c))
+			} else {
+				res += fmt.Sprint(string(c))
+			}
 		}
 		res += "\n"
 	}
@@ -93,94 +106,129 @@ func right(pos Vec) Vec {
 	return Vec{X: pos.X + 1, Y: pos.Y}
 }
 
+func Add(s uint, i uint) uint {
+	if i > 64 {
+		panic("more then 64")
+	}
+
+	s = s | (uint(1) << i)
+
+	return s
+}
+
+func Remove(s uint, i uint) uint {
+	if i > 64 {
+		panic("more then 64")
+	}
+
+	s = s & (^(uint(1) << i))
+
+	return s
+}
+
+func Has(s uint, i uint) bool {
+	if i > 64 {
+		panic("more then 64")
+	}
+
+	mask := uint(1) << i
+
+	return s&mask == mask
+}
+
 const MAX = 10000000000000
 
-func (m *Map) unlock(door byte) {
-	for i := 0; i < m.height; i++ {
-		for j := 0; j < m.width; j++ {
-			vec := Vec{X: j, Y: i}
+type State struct {
+	pos      Vec
+	keys     uint
+	distance int
+}
 
-			if m.at(vec) == door {
-				fmt.Println("unlocked", door)
-				m.field[i][j] = '.'
-				m.show()
-				return
-			}
-		}
+type StateWithoutD struct {
+	pos  Vec
+	keys uint
+}
+
+func (m *Map) hasAllKeys(set uint) bool {
+	all := uint(0)
+
+	for k, _ := range m.keys {
+		all = Add(all, uint(k-'a'))
 	}
+
+	return set == all
 }
 
 func (m *Map) steps() int {
-	q := map[Vec]bool{}
-	dist := map[Vec]int{}
-	prev := map[Vec]Vec{}
+	seen := map[StateWithoutD]bool{}
+	q := []State{}
 
-	start := m.keys['@']
-
-	for i := 0; i < m.height; i++ {
-		for j := 0; j < m.width; j++ {
-			vec := Vec{X: j, Y: i}
-			val := m.at(vec)
-			if val != '#' {
-				q[vec] = true
-			}
-
-			dist[vec] = MAX
-		}
-	}
-
-	dist[start] = 0
-	q[start] = true
-
-	fmt.Println(q)
+	q = append(q, State{
+		pos:      m.robotPos,
+		keys:     0,
+		distance: 0,
+	})
 
 	for len(q) > 0 {
-		current := Vec{}
-		currentFound := false
+		// fmt.Println("Queue len ", len(q))
+		// fmt.Println("Seen len ", seen)
+		// for _, k := range q {
+		// 	fmt.Print(k.pos)
+		// }
+		// fmt.Println()
+		// fmt.Println()
 
-		for k, _ := range q {
-			if m.at(k) >= 'A' && m.at(k) <= 'Z' {
+		// pop from queue
+
+		current := q[0]
+		q = q[1:]
+
+		m.show(current)
+		time.Sleep(1 * time.Second)
+
+		// fmt.Printf("%v   -> %030b\n", current.pos, current.keys)
+
+		if seen[StateWithoutD{pos: current.pos, keys: current.keys}] {
+			continue
+		}
+		seen[StateWithoutD{pos: current.pos, keys: current.keys}] = true
+
+		if m.at(current.pos) >= 'A' && m.at(current.pos) <= 'Z' && !Has(current.keys, uint(m.at(current.pos))-uint('A')) {
+			// fmt.Println("DOOR")
+			continue
+		}
+
+		newKeys := current.keys
+
+		if m.at(current.pos) >= 'a' && m.at(current.pos) <= 'z' {
+			newKeys = Add(newKeys, uint(m.at(current.pos)-'a'))
+		}
+
+		if m.hasAllKeys(newKeys) {
+			fmt.Println(current.distance)
+			fmt.Println(newKeys)
+			os.Exit(1)
+		}
+
+		for _, next := range []Vec{up(current.pos), down(current.pos), left(current.pos), right(current.pos)} {
+			if m.at(next) == '#' {
 				continue
 			}
 
-			if !currentFound || dist[k] < dist[current] {
-				current = k
-				currentFound = true
-			}
-		}
-
-		delete(q, current)
-
-		fmt.Println(current, q)
-
-		for _, next := range []Vec{up(current), down(current), left(current), right(current)} {
-			if q[next] == false {
-				continue
-			}
-
-			if m.at(next) >= 'a' && m.at(next) <= 'z' {
-				m.unlock(m.at(next) - 'a' + 'A')
-			}
-
-			alt := dist[current] + 1
-			if alt < dist[next] {
-				dist[next] = alt
-				prev[next] = current
-			}
+			q = append(q, State{
+				pos:      next,
+				keys:     newKeys,
+				distance: current.distance + 1,
+			})
 		}
 	}
 
-	for k, v := range dist {
-		fmt.Println(k, v)
-	}
-
-	return dist[m.keys['b']]
+	return 0
 }
 
 func main() {
-	m := load("input1.txt")
-
-	m.show()
+	m := load("input2.txt")
+	m.field[m.robotPos.Y][m.robotPos.X] = '.'
 
 	result := m.steps()
 
