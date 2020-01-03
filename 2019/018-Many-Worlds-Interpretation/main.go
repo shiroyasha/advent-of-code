@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"time"
 )
 
 type Vec struct {
@@ -20,7 +19,7 @@ type Map struct {
 	width  int
 	height int
 
-	robotPos Vec
+	robots Robots
 }
 
 func load(filename string) *Map {
@@ -59,7 +58,18 @@ func load(filename string) *Map {
 			}
 
 			if result.field[i][j] == '@' {
-				result.robotPos = Vec{X: j, Y: i}
+				result.field[i+1][j] = '#'
+				result.field[i-1][j] = '#'
+
+				result.field[i][j+1] = '#'
+				result.field[i][j-1] = '#'
+
+				result.robots = Robots{
+					p1: Vec{X: j - 1, Y: i - 1},
+					p2: Vec{X: j - 1, Y: i + 1},
+					p3: Vec{X: j + 1, Y: i - 1},
+					p4: Vec{X: j + 1, Y: i + 1},
+				}
 			}
 		}
 	}
@@ -74,8 +84,14 @@ func (m *Map) show(s State) {
 		for j, c := range line {
 			pos := Vec{X: j, Y: i}
 
-			if s.pos == pos {
+			if pos == m.robots.p1 {
 				res += fmt.Sprintf("\033[41m%s\033[0m", string(c))
+			} else if pos == m.robots.p2 {
+				res += fmt.Sprintf("\033[42m%s\033[0m", string(c))
+			} else if pos == m.robots.p3 {
+				res += fmt.Sprintf("\033[43m%s\033[0m", string(c))
+			} else if pos == m.robots.p4 {
+				res += fmt.Sprintf("\033[44m%s\033[0m", string(c))
 			} else {
 				res += fmt.Sprint(string(c))
 			}
@@ -138,15 +154,22 @@ func Has(s uint, i uint) bool {
 
 const MAX = 10000000000000
 
+type Robots struct {
+	p1 Vec
+	p2 Vec
+	p3 Vec
+	p4 Vec
+}
+
 type State struct {
-	pos      Vec
+	robots   Robots
 	keys     uint
 	distance int
 }
 
 type StateWithoutD struct {
-	pos  Vec
-	keys uint
+	robots uint
+	keys   uint
 }
 
 func (m *Map) hasAllKeys(set uint) bool {
@@ -159,49 +182,89 @@ func (m *Map) hasAllKeys(set uint) bool {
 	return set == all
 }
 
+func zip(r Robots) uint {
+	res := uint(0)
+
+	res += uint(r.p1.X)
+	res += uint(r.p1.Y * 100)
+
+	res += uint(r.p2.X * 10000)
+	res += uint(r.p2.Y * 1000000)
+
+	res += uint(r.p3.X * 100000000)
+	res += uint(r.p3.Y * 10000000000)
+
+	res += uint(r.p4.X * 1000000000000)
+	res += uint(r.p4.Y * 100000000000000)
+
+	return res
+}
+
 func (m *Map) steps() int {
 	seen := map[StateWithoutD]bool{}
 	q := []State{}
 
 	q = append(q, State{
-		pos:      m.robotPos,
+		robots:   m.robots,
 		keys:     0,
 		distance: 0,
 	})
 
 	for len(q) > 0 {
-		// fmt.Println("Queue len ", len(q))
-		// fmt.Println("Seen len ", seen)
-		// for _, k := range q {
-		// 	fmt.Print(k.pos)
-		// }
-		// fmt.Println()
-		// fmt.Println()
-
-		// pop from queue
-
 		current := q[0]
 		q = q[1:]
 
-		m.show(current)
-		time.Sleep(1 * time.Second)
+		// if len(seen)%100000 == 0 {
+		// 	fmt.Println(len(seen))
+		// }
+
+		// m.show(current)
+		// time.Sleep(1 * time.Second)
 
 		// fmt.Printf("%v   -> %030b\n", current.pos, current.keys)
 
-		if seen[StateWithoutD{pos: current.pos, keys: current.keys}] {
+		z := zip(current.robots)
+		if seen[StateWithoutD{robots: z, keys: current.keys}] {
 			continue
 		}
-		seen[StateWithoutD{pos: current.pos, keys: current.keys}] = true
+		seen[StateWithoutD{robots: z, keys: current.keys}] = true
 
-		if m.at(current.pos) >= 'A' && m.at(current.pos) <= 'Z' && !Has(current.keys, uint(m.at(current.pos))-uint('A')) {
+		if m.at(current.robots.p1) >= 'A' && m.at(current.robots.p1) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p1))-uint('A')) {
+			// fmt.Println("DOOR")
+			continue
+		}
+
+		if m.at(current.robots.p2) >= 'A' && m.at(current.robots.p2) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p2))-uint('A')) {
+			// fmt.Println("DOOR")
+			continue
+		}
+
+		if m.at(current.robots.p3) >= 'A' && m.at(current.robots.p3) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p3))-uint('A')) {
+			// fmt.Println("DOOR")
+			continue
+		}
+
+		if m.at(current.robots.p4) >= 'A' && m.at(current.robots.p4) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p4))-uint('A')) {
 			// fmt.Println("DOOR")
 			continue
 		}
 
 		newKeys := current.keys
 
-		if m.at(current.pos) >= 'a' && m.at(current.pos) <= 'z' {
-			newKeys = Add(newKeys, uint(m.at(current.pos)-'a'))
+		if m.at(current.robots.p1) >= 'a' && m.at(current.robots.p1) <= 'z' {
+			newKeys = Add(newKeys, uint(m.at(current.robots.p1)-'a'))
+		}
+
+		if m.at(current.robots.p2) >= 'a' && m.at(current.robots.p2) <= 'z' {
+			newKeys = Add(newKeys, uint(m.at(current.robots.p2)-'a'))
+		}
+
+		if m.at(current.robots.p3) >= 'a' && m.at(current.robots.p3) <= 'z' {
+			newKeys = Add(newKeys, uint(m.at(current.robots.p3)-'a'))
+		}
+
+		if m.at(current.robots.p4) >= 'a' && m.at(current.robots.p4) <= 'z' {
+			newKeys = Add(newKeys, uint(m.at(current.robots.p4)-'a'))
 		}
 
 		if m.hasAllKeys(newKeys) {
@@ -210,13 +273,69 @@ func (m *Map) steps() int {
 			os.Exit(1)
 		}
 
-		for _, next := range []Vec{up(current.pos), down(current.pos), left(current.pos), right(current.pos)} {
+		for _, next := range []Vec{up(current.robots.p1), down(current.robots.p1), left(current.robots.p1), right(current.robots.p1)} {
 			if m.at(next) == '#' {
 				continue
 			}
 
 			q = append(q, State{
-				pos:      next,
+				robots: Robots{
+					p1: next,
+					p2: current.robots.p2,
+					p3: current.robots.p3,
+					p4: current.robots.p4,
+				},
+				keys:     newKeys,
+				distance: current.distance + 1,
+			})
+		}
+
+		for _, next := range []Vec{up(current.robots.p2), down(current.robots.p2), left(current.robots.p2), right(current.robots.p2)} {
+			if m.at(next) == '#' {
+				continue
+			}
+
+			q = append(q, State{
+				robots: Robots{
+					p1: current.robots.p1,
+					p2: next,
+					p3: current.robots.p3,
+					p4: current.robots.p4,
+				},
+				keys:     newKeys,
+				distance: current.distance + 1,
+			})
+		}
+
+		for _, next := range []Vec{up(current.robots.p3), down(current.robots.p3), left(current.robots.p3), right(current.robots.p3)} {
+			if m.at(next) == '#' {
+				continue
+			}
+
+			q = append(q, State{
+				robots: Robots{
+					p1: current.robots.p1,
+					p2: current.robots.p2,
+					p3: next,
+					p4: current.robots.p4,
+				},
+				keys:     newKeys,
+				distance: current.distance + 1,
+			})
+		}
+
+		for _, next := range []Vec{up(current.robots.p4), down(current.robots.p4), left(current.robots.p4), right(current.robots.p4)} {
+			if m.at(next) == '#' {
+				continue
+			}
+
+			q = append(q, State{
+				robots: Robots{
+					p1: current.robots.p1,
+					p2: current.robots.p2,
+					p3: current.robots.p3,
+					p4: next,
+				},
 				keys:     newKeys,
 				distance: current.distance + 1,
 			})
@@ -227,8 +346,7 @@ func (m *Map) steps() int {
 }
 
 func main() {
-	m := load("input2.txt")
-	m.field[m.robotPos.Y][m.robotPos.X] = '.'
+	m := load("input5.txt")
 
 	result := m.steps()
 
