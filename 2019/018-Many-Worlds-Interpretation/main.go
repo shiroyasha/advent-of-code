@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"container/heap"
 	"fmt"
 	"os"
 )
@@ -465,9 +466,10 @@ func (h *Heap) Pop() interface{} {
 
 func part1(m Map, g Graph) int {
 	seen := map[Part1Seen]bool{}
-	q := Heap{}
+	q := &Heap{}
 
-	q = append(q, Part1Item{pos: '@', keys: 0, distance: 0})
+	heap.Init(q)
+	heap.Push(q, Part1Item{pos: '@', keys: 0, distance: 0})
 
 	possibleNext := func(current Part1Item) []byte {
 		res := []byte{}
@@ -485,8 +487,8 @@ func part1(m Map, g Graph) int {
 		return res
 	}
 
-	for len(q) > 0 {
-		current := q.Pop().(Part1Item)
+	for q.Len() > 0 {
+		current := heap.Pop(q).(Part1Item)
 
 		s := Part1Seen{pos: current.pos, keys: current.keys}
 		if seen[s] {
@@ -510,7 +512,7 @@ func part1(m Map, g Graph) int {
 				keys:     nextKeys,
 			}
 
-			q.Push(item)
+			heap.Push(q, item)
 		}
 	}
 
@@ -518,7 +520,7 @@ func part1(m Map, g Graph) int {
 }
 
 func main() {
-	m := load("input3.txt")
+	m := load("input5.txt")
 	g := m.DistanceGraph()
 
 	fmt.Println("Graph ready")
