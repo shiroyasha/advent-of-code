@@ -22,7 +22,7 @@ type Map struct {
 
 	robot Vec
 
-	robots Robots
+	robots map[byte]Vec
 }
 
 func load(filename string) *Map {
@@ -62,18 +62,18 @@ func load(filename string) *Map {
 
 			if result.field[i][j] == '@' {
 				result.robot = Vec{X: j, Y: i}
-				// result.field[i+1][j] = '#'
-				// result.field[i-1][j] = '#'
+				result.field[i+1][j] = '#'
+				result.field[i-1][j] = '#'
 
-				// result.field[i][j+1] = '#'
-				// result.field[i][j-1] = '#'
+				result.field[i][j+1] = '#'
+				result.field[i][j-1] = '#'
 
-				// result.robots = Robots{
-				// 	p1: Vec{X: j - 1, Y: i - 1},
-				// 	p2: Vec{X: j - 1, Y: i + 1},
-				// 	p3: Vec{X: j + 1, Y: i - 1},
-				// 	p4: Vec{X: j + 1, Y: i + 1},
-				// }
+				result.robots = map[byte]Vec{
+					'1': Vec{X: j - 1, Y: i - 1},
+					'2': Vec{X: j - 1, Y: i + 1},
+					'3': Vec{X: j + 1, Y: i - 1},
+					'4': Vec{X: j + 1, Y: i + 1},
+				}
 			}
 		}
 	}
@@ -81,24 +81,12 @@ func load(filename string) *Map {
 	return result
 }
 
-func (m *Map) show(s State) {
+func (m *Map) show() {
 	res := ""
 
-	for i, line := range m.field {
-		for j, c := range line {
-			pos := Vec{X: j, Y: i}
-
-			if pos == m.robots.p1 {
-				res += fmt.Sprintf("\033[41m%s\033[0m", string(c))
-			} else if pos == m.robots.p2 {
-				res += fmt.Sprintf("\033[42m%s\033[0m", string(c))
-			} else if pos == m.robots.p3 {
-				res += fmt.Sprintf("\033[43m%s\033[0m", string(c))
-			} else if pos == m.robots.p4 {
-				res += fmt.Sprintf("\033[44m%s\033[0m", string(c))
-			} else {
-				res += fmt.Sprint(string(c))
-			}
+	for _, line := range m.field {
+		for _, c := range line {
+			res += fmt.Sprint(string(c))
 		}
 		res += "\n"
 	}
@@ -162,14 +150,18 @@ func (m *Map) findPath(p1, p2 Vec) (int, uint, bool) {
 func (m *Map) DistanceGraph() Graph {
 	g := Graph{}
 
-	g['@'] = map[byte]Path{}
+	for _, r := range []byte{'1', '2', '3', '4'} {
+		g[r] = map[byte]Path{}
 
-	for k, p := range m.keys {
-		distance, doors, _ := m.findPath(m.robot, p)
+		for k, p := range m.keys {
+			distance, doors, ok := m.findPath(m.robots[r], p)
 
-		g['@'][k] = Path{
-			distance: distance,
-			doorsSet: doors,
+			if ok {
+				g[r][k] = Path{
+					distance: distance,
+					doorsSet: doors,
+				}
+			}
 		}
 	}
 
@@ -177,9 +169,9 @@ func (m *Map) DistanceGraph() Graph {
 		g[k1] = map[byte]Path{}
 
 		for k2, p2 := range m.keys {
-			if p1 != p2 {
-				distance, doors, _ := m.findPath(p1, p2)
+			distance, doors, ok := m.findPath(p1, p2)
 
+			if ok {
 				g[k1][k2] = Path{
 					distance: distance,
 					doorsSet: doors,
@@ -270,169 +262,6 @@ func (m *Map) hasAllKeys(set uint) bool {
 	return set == all
 }
 
-func zip(r Robots, keys uint) uint {
-	res := keys
-
-	res += uint(r.p1.X)
-	res += uint(r.p1.Y * 100)
-
-	res += uint(r.p2.X * 10000)
-	res += uint(r.p2.Y * 1000000)
-
-	res += uint(r.p3.X * 100000000)
-	res += uint(r.p3.Y * 10000000000)
-
-	res += uint(r.p4.X * 1000000000000)
-	res += uint(r.p4.Y * 100000000000000)
-
-	return res
-}
-
-func (m *Map) steps() int {
-	seen := map[uint]struct{}{}
-	q := []State{}
-
-	q = append(q, State{
-		robots:   m.robots,
-		keys:     0,
-		distance: 0,
-	})
-
-	for len(q) > 0 {
-		current := q[0]
-		q = q[1:]
-
-		// if len(seen)%100000 == 0 {
-		// 	fmt.Println(len(seen))
-		// }
-
-		// m.show(current)
-		// time.Sleep(1 * time.Second)
-
-		// fmt.Printf("%v   -> %030b\n", current.pos, current.keys)
-
-		z := zip(current.robots, current.keys)
-		if _, ok := seen[z]; ok {
-			continue
-		}
-		seen[z] = struct{}{}
-
-		if m.at(current.robots.p1) >= 'A' && m.at(current.robots.p1) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p1))-uint('A')) {
-			// fmt.Println("DOOR")
-			continue
-		}
-
-		if m.at(current.robots.p2) >= 'A' && m.at(current.robots.p2) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p2))-uint('A')) {
-			// fmt.Println("DOOR")
-			continue
-		}
-
-		if m.at(current.robots.p3) >= 'A' && m.at(current.robots.p3) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p3))-uint('A')) {
-			// fmt.Println("DOOR")
-			continue
-		}
-
-		if m.at(current.robots.p4) >= 'A' && m.at(current.robots.p4) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p4))-uint('A')) {
-			// fmt.Println("DOOR")
-			continue
-		}
-
-		newKeys := current.keys
-
-		if m.at(current.robots.p1) >= 'a' && m.at(current.robots.p1) <= 'z' {
-			newKeys = Add(newKeys, uint(m.at(current.robots.p1)-'a'))
-		}
-
-		if m.at(current.robots.p2) >= 'a' && m.at(current.robots.p2) <= 'z' {
-			newKeys = Add(newKeys, uint(m.at(current.robots.p2)-'a'))
-		}
-
-		if m.at(current.robots.p3) >= 'a' && m.at(current.robots.p3) <= 'z' {
-			newKeys = Add(newKeys, uint(m.at(current.robots.p3)-'a'))
-		}
-
-		if m.at(current.robots.p4) >= 'a' && m.at(current.robots.p4) <= 'z' {
-			newKeys = Add(newKeys, uint(m.at(current.robots.p4)-'a'))
-		}
-
-		if m.hasAllKeys(newKeys) {
-			fmt.Println(current.distance)
-			fmt.Println(newKeys)
-			os.Exit(1)
-		}
-
-		for _, next := range []Vec{up(current.robots.p1), down(current.robots.p1), left(current.robots.p1), right(current.robots.p1)} {
-			if m.at(next) == '#' {
-				continue
-			}
-
-			q = append(q, State{
-				robots: Robots{
-					p1: next,
-					p2: current.robots.p2,
-					p3: current.robots.p3,
-					p4: current.robots.p4,
-				},
-				keys:     newKeys,
-				distance: current.distance + 1,
-			})
-		}
-
-		for _, next := range []Vec{up(current.robots.p2), down(current.robots.p2), left(current.robots.p2), right(current.robots.p2)} {
-			if m.at(next) == '#' {
-				continue
-			}
-
-			q = append(q, State{
-				robots: Robots{
-					p1: current.robots.p1,
-					p2: next,
-					p3: current.robots.p3,
-					p4: current.robots.p4,
-				},
-				keys:     newKeys,
-				distance: current.distance + 1,
-			})
-		}
-
-		for _, next := range []Vec{up(current.robots.p3), down(current.robots.p3), left(current.robots.p3), right(current.robots.p3)} {
-			if m.at(next) == '#' {
-				continue
-			}
-
-			q = append(q, State{
-				robots: Robots{
-					p1: current.robots.p1,
-					p2: current.robots.p2,
-					p3: next,
-					p4: current.robots.p4,
-				},
-				keys:     newKeys,
-				distance: current.distance + 1,
-			})
-		}
-
-		for _, next := range []Vec{up(current.robots.p4), down(current.robots.p4), left(current.robots.p4), right(current.robots.p4)} {
-			if m.at(next) == '#' {
-				continue
-			}
-
-			q = append(q, State{
-				robots: Robots{
-					p1: current.robots.p1,
-					p2: current.robots.p2,
-					p3: current.robots.p3,
-					p4: next,
-				},
-				keys:     newKeys,
-				distance: current.distance + 1,
-			})
-		}
-	}
-
-	return 0
-}
-
 type Part1Item struct {
 	pos      byte
 	distance int
@@ -519,13 +348,120 @@ func part1(m Map, g Graph) int {
 	panic("never go here")
 }
 
+type Part2Item struct {
+	pos      string
+	distance int
+	keys     uint
+}
+
+type Part2Seen struct {
+	pos  string
+	keys uint
+}
+
+type Heap2 []Part2Item
+
+func (h Heap2) Len() int           { return len(h) }
+func (h Heap2) Less(i, j int) bool { return h[i].distance < h[j].distance }
+func (h Heap2) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *Heap2) Push(x interface{}) {
+	// Push and Pop use pointer receivers because they modify the slice's length,
+	// not just its contents.
+	*h = append(*h, x.(Part2Item))
+}
+
+func (h *Heap2) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+func part2(m Map, g Graph) int {
+	seen := map[Part2Seen]bool{}
+	q := &Heap2{}
+
+	heap.Init(q)
+	heap.Push(q, Part2Item{pos: "1234", keys: 0, distance: 0})
+
+	possibleNext := func(current Part2Item) []string {
+		res := []string{}
+
+		for i, r := range []byte(current.pos) {
+			for k, _ := range g[r] {
+				if Has(current.keys, uint(k-'a')) {
+					continue
+				}
+
+				if g[r][k].doorsSet|current.keys == current.keys {
+					next := append([]byte(current.pos), []byte{}...)
+
+					next[i] = k
+
+					res = append(res, string(next))
+				}
+			}
+		}
+
+		return res
+	}
+
+	for q.Len() > 0 {
+		current := heap.Pop(q).(Part2Item)
+
+		// fmt.Printf("Next %s, keys %010b, distance %d\n", current.pos, current.keys, current.distance)
+
+		s := Part2Seen{pos: current.pos, keys: current.keys}
+		if seen[s] {
+			continue
+		}
+		seen[s] = true
+
+		if m.hasAllKeys(current.keys) {
+			return current.distance
+		}
+
+		for _, next := range possibleNext(current) {
+			nextKeys := current.keys
+			distance := current.distance
+
+			for _, r := range []byte(next) {
+				if r >= 'a' && r <= 'z' {
+					nextKeys = Add(nextKeys, uint(r-'a'))
+				}
+			}
+
+			for i, _ := range []byte(current.pos) {
+				distance += g[byte(current.pos[i])][byte(next[i])].distance
+			}
+
+			item := Part2Item{
+				distance: distance,
+				pos:      next,
+				keys:     nextKeys,
+			}
+
+			// fmt.Printf("Next %s, keys %010b, distance %d\n", item.pos, item.keys, item.distance)
+			// time.Sleep(1 * time.Second)
+
+			heap.Push(q, item)
+		}
+	}
+
+	panic("never go here")
+}
+
 func main() {
 	m := load("input5.txt")
+	m.show()
 	g := m.DistanceGraph()
+	fmt.Println(g['1'])
 
 	fmt.Println("Graph ready")
 
-	fmt.Println(part1(*m, g))
+	fmt.Println(part2(*m, g))
 
 	// result := m.steps()
 
