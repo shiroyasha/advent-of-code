@@ -19,6 +19,8 @@ type Map struct {
 	width  int
 	height int
 
+	robot Vec
+
 	robots Robots
 }
 
@@ -58,18 +60,19 @@ func load(filename string) *Map {
 			}
 
 			if result.field[i][j] == '@' {
-				result.field[i+1][j] = '#'
-				result.field[i-1][j] = '#'
+				result.robot = Vec{X: j, Y: i}
+				// result.field[i+1][j] = '#'
+				// result.field[i-1][j] = '#'
 
-				result.field[i][j+1] = '#'
-				result.field[i][j-1] = '#'
+				// result.field[i][j+1] = '#'
+				// result.field[i][j-1] = '#'
 
-				result.robots = Robots{
-					p1: Vec{X: j - 1, Y: i - 1},
-					p2: Vec{X: j - 1, Y: i + 1},
-					p3: Vec{X: j + 1, Y: i - 1},
-					p4: Vec{X: j + 1, Y: i + 1},
-				}
+				// result.robots = Robots{
+				// 	p1: Vec{X: j - 1, Y: i - 1},
+				// 	p2: Vec{X: j - 1, Y: i + 1},
+				// 	p3: Vec{X: j + 1, Y: i - 1},
+				// 	p4: Vec{X: j + 1, Y: i + 1},
+				// }
 			}
 		}
 	}
@@ -100,6 +103,91 @@ func (m *Map) show(s State) {
 	}
 
 	fmt.Println(res)
+}
+
+type Graph map[byte]map[byte]Path
+
+type Path struct {
+	distance int
+	doorsSet uint
+}
+
+type FindItem struct {
+	pos      Vec
+	distance int
+	doorsSet uint
+}
+
+func (m *Map) findPath(p1, p2 Vec) (int, uint, bool) {
+	seen := map[Vec]bool{}
+
+	q := []FindItem{}
+	q = append(q, FindItem{pos: p1, distance: 0, doorsSet: 0})
+
+	for len(q) > 0 {
+		current := q[0]
+		q = q[1:]
+
+		if seen[current.pos] {
+			continue
+		}
+		seen[current.pos] = true
+
+		if m.at(current.pos) == '#' {
+			continue
+		}
+
+		if current.pos == p2 {
+			return current.distance, current.doorsSet, true
+		}
+
+		nextDoors := current.doorsSet
+		if m.at(current.pos) >= 'A' && m.at(current.pos) <= 'Z' {
+			nextDoors = Add(nextDoors, uint(m.at(current.pos)-'A'))
+		}
+
+		for _, next := range []Vec{up(current.pos), down(current.pos), left(current.pos), right(current.pos)} {
+			q = append(q, FindItem{
+				distance: current.distance + 1,
+				doorsSet: nextDoors,
+				pos:      next,
+			})
+		}
+	}
+
+	return MAX, uint(0), false
+}
+
+func (m *Map) DistanceGraph() Graph {
+	g := Graph{}
+
+	g['@'] = map[byte]Path{}
+
+	for k, p := range m.keys {
+		distance, doors, _ := m.findPath(m.robot, p)
+
+		g['@'][k] = Path{
+			distance: distance,
+			doorsSet: doors,
+		}
+	}
+
+	for k1, p1 := range m.keys {
+		g[k1] = map[byte]Path{}
+
+		for k2, p2 := range m.keys {
+			if p1 != p2 {
+				distance, doors, _ := m.findPath(p1, p2)
+
+				g[k1][k2] = Path{
+					distance: distance,
+					doorsSet: doors,
+				}
+			}
+		}
+	}
+
+	return g
 }
 
 func (m *Map) at(p Vec) byte {
@@ -169,7 +257,6 @@ type State struct {
 
 type StateWithoutD struct {
 	robots uint
-	keys   uint
 }
 
 func (m *Map) hasAllKeys(set uint) bool {
@@ -182,8 +269,8 @@ func (m *Map) hasAllKeys(set uint) bool {
 	return set == all
 }
 
-func zip(r Robots) uint {
-	res := uint(0)
+func zip(r Robots, keys uint) uint {
+	res := keys
 
 	res += uint(r.p1.X)
 	res += uint(r.p1.Y * 100)
@@ -201,7 +288,7 @@ func zip(r Robots) uint {
 }
 
 func (m *Map) steps() int {
-	seen := map[StateWithoutD]bool{}
+	seen := map[uint]struct{}{}
 	q := []State{}
 
 	q = append(q, State{
@@ -223,11 +310,11 @@ func (m *Map) steps() int {
 
 		// fmt.Printf("%v   -> %030b\n", current.pos, current.keys)
 
-		z := zip(current.robots)
-		if seen[StateWithoutD{robots: z, keys: current.keys}] {
+		z := zip(current.robots, current.keys)
+		if _, ok := seen[z]; ok {
 			continue
 		}
-		seen[StateWithoutD{robots: z, keys: current.keys}] = true
+		seen[z] = struct{}{}
 
 		if m.at(current.robots.p1) >= 'A' && m.at(current.robots.p1) <= 'Z' && !Has(current.keys, uint(m.at(current.robots.p1))-uint('A')) {
 			// fmt.Println("DOOR")
@@ -345,10 +432,100 @@ func (m *Map) steps() int {
 	return 0
 }
 
+type Part1Item struct {
+	pos      byte
+	distance int
+	keys     uint
+}
+
+type Part1Seen struct {
+	pos  byte
+	keys uint
+}
+
+type Heap []Part1Item
+
+func (h Heap) Len() int           { return len(h) }
+func (h Heap) Less(i, j int) bool { return h[i].distance < h[j].distance }
+func (h Heap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *Heap) Push(x interface{}) {
+	// Push and Pop use pointer receivers because they modify the slice's length,
+	// not just its contents.
+	*h = append(*h, x.(Part1Item))
+}
+
+func (h *Heap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+func part1(m Map, g Graph) int {
+	seen := map[Part1Seen]bool{}
+	q := Heap{}
+
+	q = append(q, Part1Item{pos: '@', keys: 0, distance: 0})
+
+	possibleNext := func(current Part1Item) []byte {
+		res := []byte{}
+
+		for k, _ := range g[current.pos] {
+			if Has(current.keys, uint(k-'a')) {
+				continue
+			}
+
+			if g[current.pos][k].doorsSet|current.keys == current.keys {
+				res = append(res, k)
+			}
+		}
+
+		return res
+	}
+
+	for len(q) > 0 {
+		current := q.Pop().(Part1Item)
+
+		s := Part1Seen{pos: current.pos, keys: current.keys}
+		if seen[s] {
+			continue
+		}
+		seen[s] = true
+
+		if m.hasAllKeys(current.keys) {
+			return current.distance
+		}
+
+		for _, next := range possibleNext(current) {
+			nextKeys := current.keys
+			if next >= 'a' && next <= 'z' {
+				nextKeys = Add(nextKeys, uint(next-'a'))
+			}
+
+			item := Part1Item{
+				distance: current.distance + g[current.pos][next].distance,
+				pos:      next,
+				keys:     nextKeys,
+			}
+
+			q.Push(item)
+		}
+	}
+
+	panic("never go here")
+}
+
 func main() {
-	m := load("input5.txt")
+	m := load("input3.txt")
+	g := m.DistanceGraph()
 
-	result := m.steps()
+	fmt.Println("Graph ready")
 
-	fmt.Println(result)
+	fmt.Println(part1(*m, g))
+
+	// result := m.steps()
+
+	// fmt.Println(result)
 }
