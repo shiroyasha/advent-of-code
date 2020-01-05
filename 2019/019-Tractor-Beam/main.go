@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-const debug = true
+const debug = false
 
 const (
 	OpcodeAdd                = 1
@@ -655,18 +655,30 @@ func move(pos Pos, dir int) Pos {
 	panic("unknown direction")
 }
 
-const size = 6
+type Map [][]int
 
-var m = [size][size]int{}
+func (m *Map) draw(x, y int, size int) {
+	for i := 0; i < y+size+1; i++ {
+		for j := 0; j < y+size+1; j++ {
+			colorIt := false
 
-func draw() {
-	for i := 0; i < size; i++ {
-		for j := 0; j < size; j++ {
-			switch m[i][j] {
+			if j >= x && j < x+size && i >= y && i < y+size {
+				colorIt = true
+			}
+
+			switch (*m)[i][j] {
 			case 0:
-				fmt.Print(".")
+				if colorIt {
+					fmt.Print("\033[31m.\033[0m")
+				} else {
+					fmt.Print(".")
+				}
 			case 1:
-				fmt.Print("#")
+				if colorIt {
+					fmt.Print("\033[31m#\033[0m")
+				} else {
+					fmt.Print("#")
+				}
 			}
 		}
 
@@ -684,33 +696,110 @@ func check(pos Pos) int {
 	return p.output[len(p.output)-1]
 }
 
-func opcodes() {
-	code := []int{109, 424, 203, 1, 21101, 0, 11, 0, 1106, 0, 282, 21102, 18, 1, 0, 1106, 0, 259, 2101, 0, 1, 221, 203, 1, 21102, 1, 31, 0, 1105, 1, 282, 21101, 0, 38, 0, 1106, 0, 259, 20102, 1, 23, 2, 22101, 0, 1, 3, 21102, 1, 1, 1, 21101, 57, 0, 0, 1105, 1, 303, 2102, 1, 1, 222, 20101, 0, 221, 3, 21002, 221, 1, 2, 21101, 0, 259, 1, 21102, 1, 80, 0, 1105, 1, 225, 21102, 125, 1, 2, 21102, 1, 91, 0, 1106, 0, 303, 2101, 0, 1, 223, 21002, 222, 1, 4, 21102, 1, 259, 3, 21102, 225, 1, 2, 21102, 225, 1, 1, 21101, 0, 118, 0, 1106, 0, 225, 20102, 1, 222, 3, 21101, 0, 69, 2, 21102, 1, 133, 0, 1106, 0, 303, 21202, 1, -1, 1, 22001, 223, 1, 1, 21102, 148, 1, 0, 1106, 0, 259, 1201, 1, 0, 223, 20101, 0, 221, 4, 21001, 222, 0, 3, 21102, 1, 22, 2, 1001, 132, -2, 224, 1002, 224, 2, 224, 1001, 224, 3, 224, 1002, 132, -1, 132, 1, 224, 132, 224, 21001, 224, 1, 1, 21102, 195, 1, 0, 106, 0, 108, 20207, 1, 223, 2, 20101, 0, 23, 1, 21102, -1, 1, 3, 21101, 0, 214, 0, 1105, 1, 303, 22101, 1, 1, 1, 204, 1, 99, 0, 0, 0, 0, 109, 5, 1202, -4, 1, 249, 21202, -3, 1, 1, 22102, 1, -2, 2, 21201, -1, 0, 3, 21101, 250, 0, 0, 1106, 0, 225, 22102, 1, 1, -4, 109, -5, 2105, 1, 0, 109, 3, 22107, 0, -2, -1, 21202, -1, 2, -1, 21201, -1, -1, -1, 22202, -1, -2, -2, 109, -3, 2106, 0, 0, 109, 3, 21207, -2, 0, -1, 1206, -1, 294, 104, 0, 99, 22101, 0, -2, -2, 109, -3, 2106, 0, 0, 109, 5, 22207, -3, -4, -1, 1206, -1, 346, 22201, -4, -3, -4, 21202, -3, -1, -1, 22201, -4, -1, 2, 21202, 2, -1, -1, 22201, -4, -1, 1, 22102, 1, -2, 3, 21101, 0, 343, 0, 1106, 0, 303, 1105, 1, 415, 22207, -2, -3, -1, 1206, -1, 387, 22201, -3, -2, -3, 21202, -2, -1, -1, 22201, -3, -1, 3, 21202, 3, -1, -1, 22201, -3, -1, 2, 22102, 1, -4, 1, 21101, 384, 0, 0, 1106, 0, 303, 1106, 0, 415, 21202, -4, -1, -4, 22201, -4, -3, -4, 22202, -3, -2, -2, 22202, -2, -4, -4, 22202, -3, -2, -3, 21202, -4, -1, -2, 22201, -3, -2, 1, 21202, 1, 1, -4, 109, -5, 2105, 1, 0}
-	p := NewProcess(code, []int{})
+func part1() {
+	m := Map{}
 
-	for _, op := range p.Opcodes() {
-		fmt.Println(op)
+	for i := 0; i < 20; i++ {
+		m = append(m, []int{})
+
+		for j := 0; j < 20; j++ {
+			pos := Pos{X: j, Y: i}
+
+			m[i] = append(m[i], check(pos))
+		}
 	}
 }
 
-func main() {
-	res := 0
+func part2() {
+	line1 := []Pos{Pos{}, Pos{}, Pos{}}
+	current := Pos{X: 2, Y: 3}
 
-	for i := 0; i < size; i++ {
-		for j := 0; j < size; j++ {
-			pos := Pos{X: j, Y: i}
+	for current.X < 2000 && current.Y < 2000 {
+		line1 = append(line1, current)
 
-			m[i][j] = check(pos)
+		t1 := Pos{X: current.X, Y: current.Y + 1}
+		t2 := Pos{X: current.X + 1, Y: current.Y + 1}
 
-			if m[i][j] == 1 {
-				res += 1
+		if check(t1) == 1 {
+			current = t1
+			continue
+		}
+
+		if check(t2) == 1 {
+			current = t2
+			continue
+		}
+
+		break
+	}
+
+	line2 := []Pos{Pos{}, Pos{}, Pos{}}
+	current = Pos{X: 2, Y: 3}
+
+	for current.X < 2000 && current.Y < 2000 {
+		line2 = append(line2, current)
+
+		t1 := Pos{X: current.X + 1, Y: current.Y + 1}
+		t2 := Pos{X: current.X, Y: current.Y + 1}
+
+		if check(t1) == 1 {
+			current = t1
+			continue
+		}
+
+		if check(t2) == 1 {
+			current = t2
+			continue
+		}
+
+		break
+	}
+
+	m := Map{}
+	for i := 0; i < 1300; i++ {
+		line := []int{}
+		for j := 0; j < 800; j++ {
+			if j >= line1[i].X && j <= line2[i].X {
+				line = append(line, 1)
+			} else {
+				line = append(line, 0)
 			}
+		}
+
+		m = append(m, line)
+	}
+
+	// fmt.Println("calc start")
+
+	x := 0
+	y := 0
+
+	size := 100
+
+	for i := 0; i < 1000; i++ {
+		// topFrom := line1[i].X
+
+		topEnd := line2[i].X
+		bottomFrom := line1[i+size-1].X
+
+		fmt.Println(i, topEnd-bottomFrom, topEnd, bottomFrom)
+
+		if topEnd-bottomFrom >= size-1 {
+			x = bottomFrom
+			y = i
+
+			break
 		}
 	}
 
-	draw()
+	// m.draw(x, y, size)
 
-	fmt.Println(res)
+	fmt.Println(x, y)
+	fmt.Println(x*10000 + y)
+}
 
-	opcodes()
+func main() {
+	part1()
+	fmt.Println("---------------")
+	part2()
 }
