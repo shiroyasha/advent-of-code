@@ -493,6 +493,7 @@ type Room struct {
 	name  string
 	paths []string
 	items []string
+	path  []string
 }
 
 func parse(screen string) Room {
@@ -547,10 +548,11 @@ func parse(screen string) Room {
 	return r
 }
 
-func dfs(p *Process, m *map[string]Room) {
+func dfs(p *Process, m *map[string]Room, path []string) {
 	// time.Sleep(1 * time.Second)
 	out := p.readOutput()
 	room := parse(out)
+	room.path = path
 	// fmt.Println(out, room)
 
 	if strings.Contains(out, "Alert!") {
@@ -594,7 +596,7 @@ func dfs(p *Process, m *map[string]Room) {
 			p.inputString("south")
 			p.RunTilInterupt()
 
-			dfs(p, m)
+			dfs(p, m, append(path, "south"))
 
 			if room.name != "== Security Checkpoint ==" {
 				p.inputString("north")
@@ -608,7 +610,7 @@ func dfs(p *Process, m *map[string]Room) {
 			p.inputString("north")
 			p.RunTilInterupt()
 
-			dfs(p, m)
+			dfs(p, m, append(path, "north"))
 
 			p.inputString("south")
 			p.RunTilInterupt()
@@ -620,7 +622,7 @@ func dfs(p *Process, m *map[string]Room) {
 			p.inputString("east")
 			p.RunTilInterupt()
 
-			dfs(p, m)
+			dfs(p, m, append(path, "east"))
 
 			p.inputString("west")
 			p.RunTilInterupt()
@@ -632,7 +634,7 @@ func dfs(p *Process, m *map[string]Room) {
 			p.inputString("west")
 			p.RunTilInterupt()
 
-			dfs(p, m)
+			dfs(p, m, append(path, "west"))
 
 			p.inputString("east")
 			p.RunTilInterupt()
@@ -648,14 +650,65 @@ func part1() {
 	p.RunTilInterupt()
 
 	m := map[string]Room{}
-	dfs(p, &m)
+	dfs(p, &m, []string{})
 
 	p.inputString("inv")
 	p.RunTilInterupt()
-	p.readOutput()
+	out := p.readOutput()
+
+	items := []string{}
+
+	for _, l := range strings.Split(out, "\n") {
+		if len(l) > 0 && l[0] == '-' {
+			items = append(items, l[2:])
+		}
+	}
 
 	for _, v := range m {
-		fmt.Printf("%-30s %+v\n", v.name, v.items)
+		fmt.Printf("%-30s %+v %v\n", v.name, v.items, v.path)
+	}
+
+	// go to security check
+
+	p.inputString("west")
+	p.RunTilInterupt()
+	p.readOutput()
+
+	p.inputString("south")
+	p.RunTilInterupt()
+	p.readOutput()
+
+	p.inputString("west")
+	p.RunTilInterupt()
+	p.readOutput()
+
+	// drop everything
+
+	for set := 0; set < 512; set++ {
+		for _, item := range items {
+			p.inputString("drop " + item)
+			p.RunTilInterupt()
+			p.readOutput()
+		}
+
+		for i := 0; i < 8; i++ {
+			if uint(set)&uint(1<<uint(i)) == uint(1<<uint(i)) {
+				p.inputString("take " + items[i])
+				p.RunTilInterupt()
+				p.readOutput()
+			}
+		}
+
+		p.inputString("south")
+		p.RunTilInterupt()
+
+		out := p.readOutput()
+		if !strings.Contains(out, "Alert!") {
+			fmt.Println(out)
+			break
+		}
+
+		fmt.Println("Tried", set)
 	}
 }
 
