@@ -85,13 +85,6 @@ func part1() int {
 	}
 
 	for _, a := range actions {
-		for i, v := range cards {
-			if v == 2019 {
-				fmt.Println(i)
-				break
-			}
-		}
-
 		if a.name == DealIntoNewStack {
 			reverse(cards)
 		}
@@ -122,35 +115,50 @@ func part1() int {
 
 func part2() int {
 	actions := load("input1.txt")
-	cards := 10007
-
+	cards := 119315717514047
 	res := 2019
 
-	for _, a := range actions {
-		fmt.Println(res)
+	m := map[int]bool{}
+	i := 0
 
-		if a.name == DealIntoNewStack {
-			res = cards - res - 1
-		}
-
-		if a.name == Cut {
-			val := 0
-			if a.value >= 0 {
-				val = a.value
-			} else {
-				val = cards + a.value
+	for {
+		for _, a := range actions {
+			if a.name == DealIntoNewStack {
+				res = cards - res - 1
 			}
 
-			if val > res {
-				res += cards - val
-			} else {
-				res -= val
+			if a.name == Cut {
+				val := 0
+				if a.value >= 0 {
+					val = a.value
+				} else {
+					val = cards + a.value
+				}
+
+				if val > res {
+					res += cards - val
+				} else {
+					res -= val
+				}
+			}
+
+			if a.name == DealWithIncrement {
+				res = res * a.value % cards
 			}
 		}
 
-		if a.name == DealWithIncrement {
-			res = res * a.value % cards
+		if len(m)%1000000 == 0 {
+			fmt.Println(i)
 		}
+
+		if m[res] {
+			fmt.Println(i)
+			break
+		}
+
+		m[res] = true
+
+		i++
 	}
 
 	return res
