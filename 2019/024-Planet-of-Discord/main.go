@@ -188,17 +188,19 @@ type Vec3 struct {
 // "#.###",
 // "##...",
 
-func (f *Field) get(level int, i, j int) int {
+func (f *Field) levelIndex(level int) int {
 	level = level * 2
+
 	if level < 0 {
 		level = -level
 		level -= 1
 	}
 
-	// fmt.Println(level, i, j)
-	// fmt.Println()
+	return level
+}
 
-	if Has(f.levels[level], uint(i*5+j)) {
+func (f *Field) get(level int, i, j int) int {
+	if Has(f.levels[f.levelIndex(level)], uint(i*5+j)) {
 		return 1
 	} else {
 		return 0
@@ -208,7 +210,7 @@ func (f *Field) get(level int, i, j int) int {
 func (f *Field) up(level, i, j int) int {
 	if i == 0 {
 		return f.get(level+1, 1, 2)
-	} else if i == 3 {
+	} else if i == 3 && j == 2 {
 		return 0 +
 			f.get(level-1, 4, 0) +
 			f.get(level-1, 4, 1) +
@@ -223,7 +225,7 @@ func (f *Field) up(level, i, j int) int {
 func (f *Field) down(level, i, j int) int {
 	if i == 4 {
 		return f.get(level+1, 3, 2)
-	} else if i == 1 {
+	} else if i == 1 && j == 2 {
 		return 0 +
 			f.get(level-1, 0, 0) +
 			f.get(level-1, 0, 1) +
@@ -238,7 +240,7 @@ func (f *Field) down(level, i, j int) int {
 func (f *Field) left(level, i, j int) int {
 	if j == 0 {
 		return f.get(level+1, 2, 1)
-	} else if j == 3 {
+	} else if j == 3 && i == 2 {
 		return 0 +
 			f.get(level-1, 0, 4) +
 			f.get(level-1, 1, 4) +
@@ -253,7 +255,7 @@ func (f *Field) left(level, i, j int) int {
 func (f *Field) right(level, i, j int) int {
 	if j == 4 {
 		return f.get(level+1, 2, 3)
-	} else if j == 1 {
+	} else if j == 1 && i == 2 {
 		return 0 +
 			f.get(level-1, 0, 0) +
 			f.get(level-1, 1, 0) +
@@ -272,23 +274,24 @@ func (f *Field) count(level, i, j int) int {
 func (f *Field) Process() {
 	newLevels := make([]uint, len(f.levels))
 
-	for l := 0; l < 200; l++ {
+	for l := -200; l < 200; l++ {
 		for i := 0; i < 5; i++ {
 			for j := 0; j < 5; j++ {
 				if i == 2 && j == 2 {
 					continue
 				}
+				levelIndex := f.levelIndex(l)
 
 				count := f.count(l, i, j)
 
-				if l == 0 {
+				if l == 1 {
 					fmt.Println(i, j, count)
 				}
 
 				if f.get(l, i, j) == 1 {
-					newLevels[l] = Set(newLevels[l], i, j, count == 1)
+					newLevels[levelIndex] = Set(newLevels[levelIndex], i, j, count == 1)
 				} else {
-					newLevels[l] = Set(newLevels[l], i, j, count == 1 || count == 2)
+					newLevels[levelIndex] = Set(newLevels[levelIndex], i, j, count == 1 || count == 2)
 				}
 			}
 		}
@@ -297,18 +300,44 @@ func (f *Field) Process() {
 	f.levels = newLevels
 }
 
+func (f *Field) bugCount() int {
+	count := 0
+
+	for l := -200; l < 200; l++ {
+		for i := 0; i < 5; i++ {
+			for j := 0; j < 5; j++ {
+				if i == 2 && j == 2 {
+					continue
+				}
+
+				if f.get(l, i, j) == 1 {
+					count++
+				}
+			}
+		}
+	}
+
+	return count
+}
+
 func part2() {
-	pattern := load(input2)
+	pattern := load(input1)
 	field := NewField(pattern)
 
 	show(field.levels[0])
 	fmt.Println()
 
-	// for i := 0; i < 200; i++ {
-	field.Process()
-	// }
+	for i := 0; i < 200; i++ {
+		field.Process()
+	}
 
+	fmt.Println()
 	show(field.levels[0])
+
+	fmt.Println()
+	show(field.levels[399])
+
+	fmt.Println(field.bugCount())
 }
 
 func main() {
