@@ -554,6 +554,7 @@ func dfs(p *Process, m *map[string]Room) {
 	// fmt.Println(out, room)
 
 	if strings.Contains(out, "Alert!") {
+		fmt.Println(out)
 		return
 	}
 
@@ -563,6 +564,30 @@ func dfs(p *Process, m *map[string]Room) {
 	}
 
 	(*m)[room.name] = room
+
+	for _, item := range room.items {
+		if item == "photons" {
+			continue
+		}
+
+		if item == "molten lava" {
+			continue
+		}
+
+		if item == "infinite loop" {
+			continue
+		}
+
+		if item == "escape pod" {
+			continue
+		}
+
+		if item == "giant electromagnet" {
+			continue
+		}
+
+		p.inputString("take " + item)
+	}
 
 	for _, d := range room.paths {
 		if d == "south" {
@@ -624,6 +649,10 @@ func part1() {
 
 	m := map[string]Room{}
 	dfs(p, &m)
+
+	p.inputString("inv")
+	p.RunTilInterupt()
+	p.readOutput()
 
 	for _, v := range m {
 		fmt.Printf("%-30s %+v\n", v.name, v.items)
