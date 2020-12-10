@@ -8,15 +8,8 @@ def find(numbers, adapter)
   return [] if numbers == []
 
   viable = numbers.select { |n| n - adapter <= 3 }
-  p viable
-
   number = viable.min
-  p number
-
   rest = numbers.reject { |n| n == number }
-  p rest
-
-  p "--------------"
 
   [ number ] + find(rest, number)
 end
@@ -29,28 +22,18 @@ end
 
 def part1(numbers)
   adapters = find(numbers, 0)
-  puts adapters.last + 3
 
   diffs = find_diffs([0] + adapters + [adapters.last+3])
 
   diffs[0] * diffs[1]
 end
 
-# puts "Result1: #{part1(numbers)}"
-
 
 $memo = {}
 
 def part2(numbers, index)
-  if index == numbers.length - 1
-    return 1
-  end
-
-  if $memo[index]
-    return $memo[index]
-  end
-
-  numbers = numbers.sort
+  return 1 if index == numbers.length - 1
+  return $memo[index] if $memo[index]
 
   current = numbers[index]
 
@@ -58,7 +41,6 @@ def part2(numbers, index)
 
   for i in index+1...numbers.length do
     if numbers[i] - current <= 3
-      # puts "Recurse: #{i}"
       res += part2(numbers, i)
     end
   end
@@ -68,4 +50,5 @@ def part2(numbers, index)
   res
 end
 
-p part2([0] + numbers, 0)
+puts "Result1: #{part1(numbers)}"
+puts "Result2: #{part2([0] + numbers.sort, 0)}"
