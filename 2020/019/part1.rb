@@ -32,61 +32,59 @@ end
 
 def match_str(rules, rule, message)
   if message[0] == rule
-    [message[0], message[1..-1]]
+    [message[0]]
   else
-    ["", message]
+    []
   end
 end
 
 def match_arr(rules, rule, message)
-  puts "#{rule}, #{message.inspect}"
+  # p ">>> #{rule}, #{message}, #{rule.size}"
 
-  matched = ""
-  rest = message
-
-  rule.each do |ref|
-    m, rest = match(rules, ref, rest)
-    matched += m
+  if rule.size == 0
+    return [""]
   end
 
-  [matched, rest]
+  res = []
+
+  match(rules, rule[0], message).each do |match1|
+    rest = message[match1.size..-1]
+    # p "1: #{match1}"
+
+    match_arr(rules, rule[1..-1], rest).each do |match2|
+      # p "2: #{match2}"
+      res << match1 + match2
+    end
+  end
+
+  res
 end
 
 def match(rules, rule_index, message)
   rule = rules[rule_index]
-
-  puts "#{rule}, #{message.inspect}"
 
   if rule.class == String
     return match_str(rules, rule, message)
   end
 
   if rule.class == Array
-    rule.each do |r|
-      matched, rest = match_arr(rules, r, message)
-
-      if rest == ""
-        return matched, ""
-      end
-    end
-
-    return "", message
+    return rule.map { |r| match_arr(rules, r, message) }.flatten
   end
 end
 
 # ------------------------------
 
-assert_eq(match_str([], "a", "a"), ["a", ""])
-assert_eq(match_str([], "a", "ab"), ["a", "b"])
-assert_eq(match_str([], "b", "ab"), ["", "ab"])
+assert_eq(match_str([], "a", "a"), ["a"])
+assert_eq(match_str([], "a", "ab"), ["a"])
+assert_eq(match_str([], "b", "ab"), [])
 
 rules = [
   [[1, 1]],
   "a",
 ]
 
-assert_eq(match(rules, 0, "bb"), ["", "bb"])
-assert_eq(match(rules, 0, "aa"), ["aa", ""])
+assert_eq(match(rules, 0, "bb"), [])
+assert_eq(match(rules, 0, "aa"), ["aa"])
 
 rules = [
   [[1, 2, 1]],
@@ -94,8 +92,8 @@ rules = [
   "b"
 ]
 
-assert_eq(match(rules, 0, "aba"), ["aba", ""])
-assert_eq(match(rules, 0, "abba"), ["", "abba"])
+assert_eq(match(rules, 0, "aba"), ["aba"])
+assert_eq(match(rules, 0, "abba"), [])
 
 rules = [
   [[1, 2, 1], [1, 2, 2, 1]],
@@ -103,8 +101,8 @@ rules = [
   "b"
 ]
 
-assert_eq(match(rules, 0, "aba"), ["aba", ""])
-assert_eq(match(rules, 0, "abba"), ["abba", ""])
+assert_eq(match(rules, 0, "aba"), ["aba"])
+assert_eq(match(rules, 0, "abba"), ["abba"])
 
 rules = [
   [[1, 2, 1], [3]],
@@ -113,8 +111,8 @@ rules = [
   [[1, 2, 2, 1]]
 ]
 
-assert_eq(match(rules, 0, "aba"), ["aba", ""])
-assert_eq(match(rules, 0, "abba"), ["abba", ""])
+assert_eq(match(rules, 0, "aba"), ["aba"])
+assert_eq(match(rules, 0, "abba"), ["abba"])
 
 rules = [
   [[3]],
@@ -124,8 +122,8 @@ rules = [
   [[2, 2]],
 ]
 
-assert_eq(match(rules, 0, "bb"), ["", "bb"])
-assert_eq(match(rules, 0, "aa"), ["aa", ""])
+assert_eq(match(rules, 0, "bb"), [])
+assert_eq(match(rules, 0, "aa"), ["aa"])
 
 rules = [
   [[1, 2], [2, 1]],
@@ -133,8 +131,8 @@ rules = [
   "b"
 ]
 
-assert_eq(match(rules, 0, "ab"), ["ab", ""])
-assert_eq(match(rules, 0, "ba"), ["ba", ""])
+assert_eq(match(rules, 0, "ab"), ["ab"])
+assert_eq(match(rules, 0, "ba"), ["ba"])
 
 rules = [
   [[1]],
@@ -143,8 +141,17 @@ rules = [
   "b"
 ]
 
-assert_eq(match(rules, 0, "ab"), ["ab", ""])
-assert_eq(match(rules, 0, "ba"), ["ba", ""])
+assert_eq(match(rules, 0, "ab"), ["ab"])
+assert_eq(match(rules, 0, "ba"), ["ba"])
+
+rules = [
+  [[1, 2], [2, 1]],
+  "a",
+  "b"
+]
+
+assert_eq(match(rules, 0, "abbb"), ["ab"])
+assert_eq(match(rules, 0, "babb"), ["ba"])
 
 rules = [
   [[2, 1]],
@@ -154,7 +161,7 @@ rules = [
   "b"
 ]
 
-assert_eq(match(rules, 0, "babb"), ["babb", ""])
+assert_eq(match(rules, 0, "babb"), ["babb"])
 
 # ------------------------------
 
@@ -164,10 +171,4 @@ rules, messages = input.split("\n\n")
 rules = parse_rules(rules)
 messages = messages.split("\n")
 
-messages[0...1].each do |message|
-  matched, rest = match(rules, 0, message)
-
-  puts ""
-  puts "#{message} => #{matched} #{rest == ""}"
-  puts "----------------"
-end
+puts messages.count { |msg| match(rules, 0, msg).include?(msg) }
