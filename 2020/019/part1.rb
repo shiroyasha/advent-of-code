@@ -39,20 +39,14 @@ def match_str(rules, rule, message)
 end
 
 def match_arr(rules, rule, message)
-  # p ">>> #{rule}, #{message}, #{rule.size}"
-
-  if rule.size == 0
-    return [""]
-  end
+  return [""] if rule.size == 0
 
   res = []
 
   match(rules, rule[0], message).each do |match1|
     rest = message[match1.size..-1]
-    # p "1: #{match1}"
 
     match_arr(rules, rule[1..-1], rest).each do |match2|
-      # p "2: #{match2}"
       res << match1 + match2
     end
   end
