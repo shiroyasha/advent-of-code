@@ -121,4 +121,24 @@ class Day20Test < Minitest::Test
     ]
   end
 
+  def test_solve_three
+    tiles = Day20.load("input0.txt").select { |t| [1951, 2311, 3079].include?(t.id) }
+
+    s = Solver.new(tiles)
+
+    assert_equal s.solve, [
+      [1951, 2311, 3079]
+    ]
+  end
+
+  def test_solve_full
+    tiles = Day20.load("input0.txt")
+
+    s = Solver.new(tiles)
+
+    assert_equal s.solve, [
+      [1951, 2311, 3079], [2729, 1427, 2473], [2971, 1489, 1171]
+    ]
+  end
+
 end

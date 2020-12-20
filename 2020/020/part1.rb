@@ -97,6 +97,10 @@ class Desk
     @field[y+@size/2][x+@size/2]
   end
 
+  def on_the_desk_count
+    @used.size
+  end
+
   def as_map
     res = @field.reject { |l| l.all? { |e| e == nil } }
     res = res.transpose.reject { |l| l.all? { |e| e == nil } }.transpose
@@ -111,23 +115,43 @@ class Solver
   def initialize(tiles)
     @tiles = tiles
 
-    @desk = Desk.new(6)
+    @desk = Desk.new(@tiles.size * 3)
     @desk.set(0, 0, @tiles[0])
   end
 
   def solve
-    tile = next_tile()
+    @tiles.each do |tile|
+      next if @desk.has?(tile.id)
 
+      next if add(tile.rotate)
+      next if add(tile.rotate)
+      next if add(tile.rotate)
+
+      next if add(tile.flip)
+
+      next if add(tile.rotate)
+      next if add(tile.rotate)
+      next if add(tile.rotate)
+    end
+
+    if @desk.on_the_desk_count == @tiles.count
+      @desk.as_map
+    else
+      solve
+    end
+  end
+
+  def add(tile)
     edges = @desk.edges.to_a
 
     edges.each do |e|
       if @desk.can_fit?(e[0], e[1], tile)
         @desk.set(e[0], e[1], tile)
-        break
+        return true
       end
     end
 
-    @desk.as_map
+    false
   end
 
   def next_tile
@@ -150,7 +174,11 @@ module Day20
   end
 
   def self.solve(tiles)
-    Solver.new(tiles).solve
+    solution = Solver.new(tiles).solve
+
+    puts solution
+
+    p solution[0][0] * solution[0][-1] * solution[-1][0] * solution[-1][-1]
   end
 end
 
