@@ -1,4 +1,5 @@
 # rubocop:disable all
+require 'set'
 
 class Tile
   attr_reader :id
@@ -8,18 +9,22 @@ class Tile
   def initialize(id, map)
     @id = id
     @map = map
-    @edges = find_edges
   end
 
-  def find_edges
-    edges = []
+  def up
+    @map[0]
+  end
 
-    edges << @map[0]
-    edges << @map.map { |l| l[-1] }.join("")
-    edges << @map[-1]
-    edges << @map.map { |l| l[0] }.join("")
+  def down
+    @map[-1]
+  end
 
-    edges
+  def left
+    @map.map { |l| l[0] }.join("")
+  end
+
+  def right
+    @map.map { |l| l[-1] }.join("")
   end
 
   def rotate
@@ -34,6 +39,8 @@ class Tile
 end
 
 class Desk
+  attr_reader :edges
+
   def initialize(size)
     @field = []
     @size = size
@@ -49,9 +56,21 @@ class Desk
     end
 
     @used = []
+    @edges = Set.new()
   end
 
-  def put(tile)
+  def can_fit?(x, y, tile)
+    up = get(x, y+1)
+    down = get(x, y-1)
+    left = get(x-1, y)
+    right = get(x+1, y)
+
+    return false if up && tile.up != up.down
+    return false if down && tile.down != down.up
+    return false if left && tile.left != left.right
+    return false if right && tile.right != right.left
+
+    true
   end
 
   def has?(tid)
@@ -61,6 +80,21 @@ class Desk
   def set(x, y, tile)
     @used << tile.id
     @field[y+@size/2][x+@size/2] = tile
+
+    @edges.delete([x, y])
+
+    @edges.add([x-1, y]) if empty?(x-1, y)
+    @edges.add([x+1, y]) if empty?(x+1, y)
+    @edges.add([x, y-1]) if empty?(x, y-1)
+    @edges.add([x, y+1]) if empty?(x, y+1)
+  end
+
+  def empty?(x, y)
+    @field[y+@size/2][x+@size/2] == nil
+  end
+
+  def get(x, y)
+    @field[y+@size/2][x+@size/2]
   end
 
   def as_map
@@ -84,7 +118,14 @@ class Solver
   def solve
     tile = next_tile()
 
-    @desk.put(tile)
+    edges = @desk.edges.to_a
+
+    edges.each do |e|
+      if @desk.can_fit?(e[0], e[1], tile)
+        @desk.set(e[0], e[1], tile)
+        break
+      end
+    end
 
     @desk.as_map
   end

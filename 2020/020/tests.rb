@@ -18,11 +18,11 @@ class Day20Test < Minitest::Test
   def test_tiles_have_edges
     tiles = Day20.load("input0.txt")
 
-    assert_equal tiles[0].edges.size, 4
-    assert_equal tiles[0].edges[0], "..##.#..#."
-    assert_equal tiles[0].edges[1], "...#.##..#"
-    assert_equal tiles[0].edges[2], "..###..###"
-    assert_equal tiles[0].edges[3], ".#####..#."
+    assert_equal tiles[0].up, "..##.#..#."
+    assert_equal tiles[0].down, "..###..###"
+
+    assert_equal tiles[0].left, ".#####..#."
+    assert_equal tiles[0].right, "...#.##..#"
   end
 
   def test_tile_can_be_rotated
@@ -83,6 +83,32 @@ class Day20Test < Minitest::Test
       ".#.#...###",
       "###..###.."
     ]
+  end
+
+  def test_desk_edges
+    tiles = Day20.load("input0.txt")
+
+    desk = Desk.new(3)
+    desk.set(0, 0, tiles[0])
+
+    assert_equal desk.edges, Set.new([
+      [-1, 0], [1, 0], [0, -1], [0, 1],
+    ])
+
+    desk.set(1, 0, tiles[1])
+
+    assert_equal desk.edges, Set.new([
+      [-1, 0], [0, -1], [0, 1], [2, 0], [1, -1], [1, 1]
+    ])
+  end
+
+  def test_desk_can_fit?
+    tiles = Day20.load("input0.txt").select { |t| [1951, 2311].include?(t.id) }
+
+    desk = Desk.new(3)
+    desk.set(0, 0, tiles[1])
+
+    assert_equal desk.can_fit?(1, 0, tiles[0]), true
   end
 
   def test_solve_simple
