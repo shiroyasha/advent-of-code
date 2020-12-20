@@ -109,6 +109,27 @@ class Desk
       line.map { |t| t.id }
     end
   end
+
+  def image
+    res = @field.reject { |l| l.all? { |e| e == nil } }
+    res = res.transpose.reject { |l| l.all? { |e| e == nil } }.transpose
+
+    res = res.map do |line|
+      line.map do |t|
+        t.map
+      end
+    end
+
+    image = []
+
+    res.each do |line|
+      line[0].size.times.each do |index|
+        image << line.map { |e| e[index] }.join("")
+      end
+    end
+
+    image
+  end
 end
 
 class Solver
@@ -135,7 +156,7 @@ class Solver
     end
 
     if @desk.on_the_desk_count == @tiles.count
-      @desk.as_map
+      @desk
     else
       solve
     end
@@ -173,15 +194,22 @@ module Day20
     end
   end
 
-  def self.solve(tiles)
-    solution = Solver.new(tiles).solve
+  def self.solve1(tiles)
+    solution = Solver.new(tiles).solve.as_map
 
     puts solution
 
     p solution[0][0] * solution[0][-1] * solution[-1][0] * solution[-1][-1]
   end
+
+  def self.solve2(tiles)
+    solution = Solver.new(tiles).solve.image
+
+    puts solution
+  end
 end
 
 if __FILE__ == $0
-  Day20.solve(Day20.load(ARGV[0]))
+  Day20.solve1(Day20.load(ARGV[0]))
+  Day20.solve2(Day20.load(ARGV[0]))
 end
