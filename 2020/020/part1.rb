@@ -36,6 +36,12 @@ class Tile
     @map = @map.map { |l| l.split("").reverse.join("") }
     self
   end
+
+  def map_without_borders
+    @map[1..-2].map do |line|
+      line[1..-2]
+    end
+  end
 end
 
 class Desk
@@ -116,19 +122,19 @@ class Desk
 
     res = res.map do |line|
       line.map do |t|
-        t.map
+        t.map_without_borders
       end
     end
 
     image = []
 
-    res.each do |line|
+    res.reverse.each do |line|
       line[0].size.times.each do |index|
         image << line.map { |e| e[index] }.join("")
       end
     end
 
-    image
+    image.reverse
   end
 end
 
@@ -180,6 +186,88 @@ class Solver
   end
 end
 
+class SearchForMonstrer
+  attr_reader :image
+
+  def initialize(image)
+    @image = image
+
+    @monster = [
+      "                  # ",
+      "#    ##    ##    ###",
+      " #  #  #  #  #  #   "
+    ]
+  end
+
+  def find
+    @image = Tile.new(0, @image).map
+    find_on_image()
+
+    @image = Tile.new(0, @image).rotate.map
+    find_on_image()
+
+    @image = Tile.new(0, @image).rotate.map
+    find_on_image()
+
+    @image = Tile.new(0, @image).rotate.map
+    find_on_image()
+
+    @image = Tile.new(0, @image).flip.map
+    find_on_image()
+
+    @image = Tile.new(0, @image).rotate.map
+    find_on_image()
+
+    @image = Tile.new(0, @image).rotate.map
+    find_on_image()
+
+    @image = Tile.new(0, @image).rotate.map
+    find_on_image()
+  end
+
+  def find_on_image
+    (0...@image.size).each do |y|
+      (0...@image[0].size).each do |x|
+        if is_monster(x, y)
+          mark(x, y)
+        end
+      end
+    end
+  end
+
+  def is_monster(x, y)
+    return false if y > @image.size - @monster.size
+    return false if x > @image[0].size - @monster[0].size
+
+    l1 = @image[y][x...x + @monster[0].size].split("")
+    l2 = @image[y+1][x...x + @monster[1].size].split("")
+    l3 = @image[y+2][x...x + @monster[2].size].split("")
+
+    @monster.size.times.each do |my|
+      line = @image[y+my][x...x + @monster[my].size].split("")
+      mline = @monster[my]
+
+      line.each.with_index do |value, index|
+        next if mline[index] != "#"
+
+        return false if value != mline[index]
+      end
+    end
+
+    true
+  end
+
+  def mark(x, y)
+    @monster.each.with_index do |line, my|
+      line.split("").each.with_index do |c, mx|
+        if c == "#"
+          @image[y+my][x+mx] = "O"
+        end
+      end
+    end
+  end
+end
+
 module Day20
   def self.load(path)
     input = File.read(path)
@@ -203,9 +291,24 @@ module Day20
   end
 
   def self.solve2(tiles)
-    solution = Solver.new(tiles).solve.image
+    img = Solver.new(tiles).solve.image
 
-    puts solution
+    s = SearchForMonstrer.new(img)
+    s.find
+
+    puts s.image
+
+    res = 0
+
+    s.image.each do |line|
+      line.split("").each do |c|
+        if c == "#"
+          res += 1
+        end
+      end
+    end
+
+    p res
   end
 end
 
