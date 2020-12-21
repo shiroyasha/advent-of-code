@@ -24,9 +24,7 @@ module Day21
     end
   end
 
-  def self.solve1(path)
-    food = parse(path)
-
+  def self.candidates(food)
     map = {}
 
     alergens = food.map(&:alergens).flatten
@@ -44,7 +42,13 @@ module Day21
       end
     end
 
-    no_good_ingre = map.map { |k, v| v}.inject(&:+)
+    map
+  end
+
+  def self.solve1(path)
+    food = parse(path)
+
+    no_good_ingre = candidates(food)
 
     result = 0
 
@@ -56,9 +60,34 @@ module Day21
 
     result
   end
+
+  def self.solve2(path)
+    food = parse(path)
+
+    solution = {}
+    m = candidates(food)
+
+    loop do
+      m.each { |k, v| puts "#{k} #{v.inspect}" }
+      p solution
+      puts "----"
+
+      single = m.find { |k, v| v.size == 1 }
+      break if single == nil
+
+      ingreedient = single[1].to_a[0]
+      solution[single[0]] = ingreedient
+
+      m.each do |k, v|
+        v.delete(ingreedient)
+      end
+    end
+
+    solution.sort_by { |k, v| k }.map { |e| e[1] }.join(",")
+  end
 end
 
 if __FILE__ == $0
   puts Day21.solve1(ARGV[0])
-  # puts Day21.solve2(ARGV[0])
+  puts Day21.solve2(ARGV[0])
 end
