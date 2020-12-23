@@ -9,7 +9,14 @@ module Day23
       numbers.push(numbers.shift)
     end
 
-    numbers[0...round].join(" ") + " (" + numbers[round].to_s + ") " + numbers[round+1..-1].join(" ")
+    numbers.each do |n|
+      if n == current
+        print "(#{n})"
+      else
+        print " #{n} "
+      end
+    end
+    puts
   end
 
   def self.play(input, round)
@@ -32,22 +39,14 @@ module Day23
       break
     end
 
-    puts "Move: #{round +1}"
-    puts "Cups: #{nice_display(numbers, round, current)}"
-    puts "Pick up: #{to_move}"
-    puts "Destination: #{des}"
+    nice_display(numbers, round, current)
 
     res = numbers[4..-1] + [current]
     dest = res.find_index { |n| n == des }
 
-    p res
-    p dest
-
     to_move.reverse.each do |n|
       res.insert(dest + 1, n)
     end
-
-    puts ""
 
     res.join("")
   end
@@ -69,13 +68,6 @@ module Day23
   def self.solve1(input)
     puts play_all(input, 100)
   end
-
-  def self.solve2(input)
-
-  end
 end
 
-if __FILE__ == $0
-  puts Day23.solve1("186524973")
-  puts Day23.solve2(ARGV[0])
-end
+puts Day23.solve1("186524973")
