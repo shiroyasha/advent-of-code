@@ -8,7 +8,7 @@ agent:
 blocks:
   - name: "Build"
     run:
-      when: "change_in('/', {exclude: ['/README.md']})"
+      when: "change_in('/')"
     task:
       env_vars:
         - name: APP_ENV
