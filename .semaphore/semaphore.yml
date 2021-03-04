@@ -1,19 +1,13 @@
 version: v1.0
-name: Advent
+name: Initial Pipeline
 agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu1804
-
 blocks:
-  - name: "Build"
+  - name: 'Block #1'
     task:
-      env_vars:
-        - name: APP_ENV
-          value: prod
       jobs:
-      - name: Advent of Code
-        parallelism: 5
-        commands:
-          - checkout
-          - sleep 10
+        - name: 'Job #1'
+          commands:
+            - checkout
